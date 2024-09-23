@@ -1,0 +1,3 @@
+recursive-include . *.h*
+include *.pyx
+include src/simgear/xml/xmltok_*.c

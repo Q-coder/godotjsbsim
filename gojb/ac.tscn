@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3 uid="uid://dxgh4imubsngc"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_0bf0q"]
+
+[node name="AC" type="Node3D"]
+transform = Transform3D(2.97406e-06, 0.0165779, -0.499725, 1.04146e-05, 0.499725, 0.0165779, 0.5, -1.05075e-05, 2.62712e-06, 0, 0, 0)
+
+[node name="JSBGodot" type="JSBGodot" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.999999, 0, 0, 0, 0.999999, 0, 0, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.0118336, -0.00212816, -0.999929, 0.000785425, 0.999999, -0.00211907, 0.99993, -0.000760292, 0.0118352, 0.00392914, -0.24024, 0.00333023)
+mesh = SubResource("CapsuleMesh_0bf0q")
+skeleton = NodePath("../JSBGodot")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4.60559)
