@@ -19,7 +19,12 @@ private:
     float input_pitch = 0.0;
     float input_roll = 0.0;
     float input_rudder = 0.0;
-    float input_throttle = 1.0;
+    float input_throttle = 0.0;
+    float input_aileron = 0.0f;  // Aileron input (-1.0 to 1.0)
+    float input_elevator = 0.0f; // Elevator input (-1.0 to 1.0)
+
+    double airspeed_knots;
+    double vertical_speed_fpm;
 
     void copy_inputs_to_JSBSim();
     void copy_outputs_from_JSBSim();
@@ -45,8 +50,12 @@ public:
     void set_input_rudder(float value);
     float get_input_rudder() const;      
 
-   void set_input_throttle(float value);
+    void set_input_throttle(float value);
     float get_input_throttle() const;    
+
+    void set_input_elevator(float value);
+    void set_input_aileron(float value);
+
 };
 
 }

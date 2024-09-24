@@ -4,11 +4,14 @@
 [ext_resource type="PackedScene" uid="uid://dxgh4imubsngc" path="res://ac.tscn" id="2_yxcfd"]
 
 [sub_resource type="Environment" id="Environment_aeqfu"]
+background_color = Color(0, 0, 0.898039, 1)
+background_energy_multiplier = 3.06
+ambient_light_color = Color(0, 0, 0.956863, 1)
 
 [node name="Node3D" type="Node3D"]
 
 [node name="AC" parent="." instance=ExtResource("2_yxcfd")]
-transform = Transform3D(-6.99839e-06, 0.0232966, -0.999728, 6.10387e-06, 0.999728, 0.0232966, 1, -5.93918e-06, -7.13869e-06, -0.0474067, 1.42777, 0)
+transform = Transform3D(-0.862098, -0.0304061, 0.505827, -3.53861e-09, 0.998198, 0.0600032, -0.506741, 0.0517287, -0.860544, -208.277, 53.9834, 389.628)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_aeqfu")
@@ -16,5 +19,5 @@ environment = SubResource("Environment_aeqfu")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.94035, 4.38032, 3.73175)
 
-[node name="Ground" parent="." instance=ExtResource("1_6r2e6")]
-transform = Transform3D(100, 0, 0, 0, 1, 0, 0, 0, 100, -0.000379086, 0, -0.00558949)
+[node name="Ground2" parent="." instance=ExtResource("1_6r2e6")]
+transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, -462.008, -38.9182, 527.369)

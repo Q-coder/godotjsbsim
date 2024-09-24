@@ -1,17 +1,26 @@
-[gd_scene load_steps=3 format=3 uid="uid://donvtr02hvkxe"]
+[gd_scene load_steps=5 format=3 uid="uid://donvtr02hvkxe"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_dywc5"]
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_bylw0"]
-size = Vector3(2.00525, 0.0593872, 2.00836)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hq7bp"]
+albedo_color = Color(0.415686, 1, 0.262745, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_a7iau"]
+
+[sub_resource type="PrismMesh" id="PrismMesh_x1r5c"]
 
 [node name="Ground" type="Node3D"]
-transform = Transform3D(100, 0, 0, 0, 1, 0, 0, 0, 100, 0, 0, 0)
+transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, 0, -6.96362, 0)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 0.0134685, 0, -0.00602007)
 mesh = SubResource("PlaneMesh_dywc5")
+surface_material_override/0 = SubResource("StandardMaterial3D_hq7bp")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00177002, -0.0278625, -0.000152588)
-shape = SubResource("BoxShape3D_bylw0")
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 20, 0, 0, 0, 1, 3.39646, 11.0358, -3.32267)
+mesh = SubResource("BoxMesh_a7iau")
+
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 30, 0, 0, 0, 1, -3.26279, 18.3893, 3.32978)
+mesh = SubResource("PrismMesh_x1r5c")
