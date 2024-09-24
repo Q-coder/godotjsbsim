@@ -17,9 +17,6 @@ using namespace godot;
  const float EARTH_RADIUS = 6371000.0;  // Radius of Earth in meters
 
 void JSBGodot::_bind_methods() {
-  //  BIND_VIRTUAL_METHOD(JSBGodot, _process);
-  //  BIND_VIRTUAL_METHOD(JSBGodot, _input);
- //   ClassDB::bind_method(D_METHOD("_input", "event"), &JSBGodot::_input);
     ClassDB::bind_method(D_METHOD("_process", "delta"), &JSBGodot::_process);
     ClassDB::bind_method(D_METHOD("set_input_pitch", "value"), &JSBGodot::set_input_pitch);
     ClassDB::bind_method(D_METHOD("get_input_pitch"), &JSBGodot::get_input_pitch);
@@ -146,7 +143,7 @@ void JSBGodot::_process(double delta) {
 }
 
 void JSBGodot::_physics_process(const real_t delta) {
-    // Your physics logic
+//    Your physics logic
 //    copy_inputs_to_JSBSim();
 //    FDMExec->Run();
 //    copy_outputs_from_JSBSim();
