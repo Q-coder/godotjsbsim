@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://dxgh4imubsngc"]
 
-[ext_resource type="PackedScene" uid="uid://gvusb455pxrd" path="res://Assets/Airplane1.blend" id="1_ukwn1"]
+[ext_resource type="PackedScene" uid="uid://cp6b6m5stltd" path="res://Assets/cessna_172_wip.glb" id="1_wdxts"]
 
 [node name="AC" type="Node3D"]
 transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
@@ -8,8 +8,8 @@ transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
 [node name="JSBGodot" type="JSBGodot" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.999999, 0, 0, 0, 0.999999, 0, 0, 0)
 
-[node name="Airplane1" parent="." instance=ExtResource("1_ukwn1")]
-transform = Transform3D(-8.74228e-08, 0, 2, 0, 2, 0, -2, 0, -8.74228e-08, 0.490366, 1.84639, -1.61417e-07)
-
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(-1.99404, 0, -0.154308, -0.0574676, 1.85613, 0.742622, 0.143208, 0.744842, -1.85059, -2.29269, 31.1576, -57.2819)
+transform = Transform3D(-1.99404, -5.5495e-09, -0.154308, -0.0578323, 1.85422, 0.747334, 0.143061, 0.749569, -1.8487, -2.29269, 11.9435, -24.0015)
+
+[node name="Sketchfab_Scene" parent="." instance=ExtResource("1_wdxts")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.164135, 0.523636, 0.63427)
