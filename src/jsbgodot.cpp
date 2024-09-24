@@ -409,7 +409,7 @@ void JSBGodot::copy_outputs_from_JSBSim()
 
         // Access airspeed from the property tree
     double tas_knots = FDMExec->GetPropertyValue("aero/qbar-psf");
-    double ias_knots = FDMExec->GetPropertyValue("velocities/vind-kt");
+    double ias_knots = FDMExec->GetPropertyValue("velocities/vc-kts");
     
     // Access vertical speed (v-down-fps is positive downwards)
     double vertical_speed_fps = -FDMExec->GetPropertyValue("velocities/v-down-fps");
