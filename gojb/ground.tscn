@@ -1,9 +1,19 @@
-[gd_scene load_steps=5 format=3 uid="uid://donvtr02hvkxe"]
+[gd_scene load_steps=8 format=3 uid="uid://donvtr02hvkxe"]
+
+[ext_resource type="Texture2D" uid="uid://cditync2r7ipo" path="res://Textures/coast_sand_rocks_02_diff_4k.png" id="1_iv7jt"]
+[ext_resource type="Texture2D" uid="uid://bipojtmv51nig" path="res://Textures/coast_sand_rocks_02_nor_gl_4k.png" id="2_i16yg"]
+[ext_resource type="Texture2D" uid="uid://tgqmh32fcwbu" path="res://Textures/coast_sand_rocks_02_rough_4k.png" id="3_xovwv"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_dywc5"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hq7bp"]
-albedo_color = Color(0.415686, 1, 0.262745, 1)
+albedo_color = Color(0.838156, 0.852736, 0.868351, 1)
+albedo_texture = ExtResource("1_iv7jt")
+roughness_texture = ExtResource("3_xovwv")
+normal_enabled = true
+normal_texture = ExtResource("2_i16yg")
+uv1_scale = Vector3(3, 3, 3)
+uv1_triplanar = true
 
 [sub_resource type="BoxMesh" id="BoxMesh_a7iau"]
 

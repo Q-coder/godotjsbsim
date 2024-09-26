@@ -1,7 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://d4gjglrwmtar4"]
+[gd_scene load_steps=6 format=3 uid="uid://d4gjglrwmtar4"]
 
+[ext_resource type="Script" path="res://node_3d.gd" id="1_1r08c"]
 [ext_resource type="PackedScene" uid="uid://donvtr02hvkxe" path="res://ground.tscn" id="1_6r2e6"]
 [ext_resource type="PackedScene" uid="uid://dxgh4imubsngc" path="res://ac.tscn" id="2_yxcfd"]
+[ext_resource type="PackedScene" uid="uid://dssmgx0csel6d" path="res://runway.tscn" id="4_w0gyf"]
 
 [sub_resource type="Environment" id="Environment_aeqfu"]
 background_color = Color(0, 0, 0.898039, 1)
@@ -9,6 +11,7 @@ background_energy_multiplier = 3.06
 ambient_light_color = Color(0, 0, 0.956863, 1)
 
 [node name="Node3D" type="Node3D"]
+script = ExtResource("1_1r08c")
 
 [node name="AC" parent="." instance=ExtResource("2_yxcfd")]
 transform = Transform3D(-0.862098, -0.0304061, 0.505827, -3.53861e-09, 0.998198, 0.0600032, -0.506741, 0.0517287, -0.860544, -208.277, 53.9834, 389.628)
@@ -20,4 +23,74 @@ environment = SubResource("Environment_aeqfu")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.94035, 4.38032, 3.73175)
 
 [node name="Ground2" parent="." instance=ExtResource("1_6r2e6")]
-transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, -462.008, -38.9182, 527.369)
+transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, -462.008, -7.78856, 527.369)
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Label" type="Label" parent="Control"]
+modulate = Color(0.509804, 1, 1, 1)
+layout_mode = 0
+offset_left = 35.0
+offset_top = 2248.0
+offset_right = 256.0
+offset_bottom = 2321.0
+scale = Vector2(5, 5)
+text = "Text"
+vertical_alignment = 1
+
+[node name="Label2" type="Label" parent="Control"]
+modulate = Color(0.364706, 1, 1, 1)
+layout_mode = 0
+offset_left = 1122.0
+offset_top = 2353.0
+offset_right = 1357.0
+offset_bottom = 2406.0
+scale = Vector2(5, 5)
+text = "text 2"
+
+[node name="Label3" type="Label" parent="Control"]
+modulate = Color(0.482353, 1, 1, 1)
+layout_mode = 0
+offset_left = 1999.0
+offset_top = 2342.0
+offset_right = 2301.0
+offset_bottom = 2402.0
+scale = Vector2(5, 5)
+text = "text 3"
+
+[node name="Label4" type="Label" parent="Control"]
+modulate = Color(0.490196, 1, 1, 1)
+layout_mode = 0
+offset_left = 3089.0
+offset_top = 2329.0
+offset_right = 3330.0
+offset_bottom = 2371.0
+scale = Vector2(5, 5)
+text = "Text 4"
+
+[node name="Label5" type="Label" parent="Control"]
+modulate = Color(0.329412, 1, 1, 1)
+layout_mode = 0
+offset_left = 3818.0
+offset_top = 2326.0
+offset_right = 4016.0
+offset_bottom = 2361.0
+scale = Vector2(5, 5)
+text = "Text 5
+"
+
+[node name="Ground" parent="." instance=ExtResource("1_6r2e6")]
+transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, -461.269, -6.96362, -2672.6)
+
+[node name="Ground3" parent="." instance=ExtResource("1_6r2e6")]
+transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, 2736.84, -6.96362, 524.052)
+
+[node name="Ground4" parent="." instance=ExtResource("1_6r2e6")]
+transform = Transform3D(400.496, 0, 0, 0, 1.00124, 0, 0, 0, 400.496, 2738.05, -6.96362, -2649.3)
+
+[node name="Runway" parent="." instance=ExtResource("4_w0gyf")]
+transform = Transform3D(-1.84465e-07, 0, 4.36856, 0, 1, 0, -4.22006, 0, -1.90956e-07, 7.02832, -3.49959, 531.932)

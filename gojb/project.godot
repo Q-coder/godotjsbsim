@@ -14,3 +14,8 @@ config/name="gojb"
 run/main_scene="res://node_3d.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=5500
+window/size/viewport_height=2500

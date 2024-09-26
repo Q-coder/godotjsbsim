@@ -22,6 +22,8 @@ private:
     float input_throttle = 0.0;
     float input_aileron = 0.0f;  // Aileron input (-1.0 to 1.0)
     float input_elevator = 0.0f; // Elevator input (-1.0 to 1.0)
+    double altitude_ft = 0.0;
+    double heading_deg = 0.0;
 
     double airspeed_knots;
     double vertical_speed_fpm;
@@ -56,6 +58,10 @@ public:
     void set_input_elevator(float value);
     void set_input_aileron(float value);
 
+    double get_airspeed_knots() const;
+    double get_vertical_speed_fpm() const;
+    double get_altitude_ft() const;
+    double get_heading() const;
 };
 
 }

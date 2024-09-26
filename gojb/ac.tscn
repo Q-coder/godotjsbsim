@@ -9,7 +9,7 @@ transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
 transform = Transform3D(1, 0, 0, 0, 0.999999, 0, 0, 0, 0.999999, 0, 0, 0)
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(-1.99404, -5.5495e-09, -0.154308, -0.0578323, 1.85422, 0.747334, 0.143061, 0.749569, -1.8487, -2.29269, 11.9435, -24.0015)
+transform = Transform3D(-1.99995, -0.00520783, 0.0129549, -0.00534883, 1.99987, -0.0217989, -0.0128973, -0.0218331, -1.99984, 0.176333, 1.06992, 0.867807)
 
 [node name="Sketchfab_Scene" parent="." instance=ExtResource("1_wdxts")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.164135, 0.523636, 0.63427)

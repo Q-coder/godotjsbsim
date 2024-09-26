@@ -30,11 +30,19 @@ void JSBGodot::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_input_rudder"), &JSBGodot::get_input_rudder);
     ClassDB::bind_method(D_METHOD("set_input_throttle", "value"), &JSBGodot::set_input_throttle);
     ClassDB::bind_method(D_METHOD("get_input_throttle"), &JSBGodot::get_input_throttle);
+    ClassDB::bind_method(D_METHOD("get_airspeed_knots"), &JSBGodot::get_airspeed_knots);
+    ClassDB::bind_method(D_METHOD("get_vertical_speed_fpm"), &JSBGodot::get_vertical_speed_fpm);
+    ClassDB::bind_method(D_METHOD("get_altitude_ft"), &JSBGodot::get_altitude_ft);
+    ClassDB::bind_method(D_METHOD("get_heading"), &JSBGodot::get_heading);
 
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_pitch"), "set_input_pitch", "get_input_pitch");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_roll"), "set_input_roll", "get_input_roll");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_rudder"), "set_input_rudder", "get_input_rudder");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_throttle"), "set_input_throttle", "get_input_throttle");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "airspeed_knots", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "", "get_airspeed_knots");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "vertical_speed_fpm", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "", "get_vertical_speed_fpm");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "altitude_ft", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "", "get_altitude_ft");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "heading", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "", "get_heading");
 }
 
 JSBGodot::JSBGodot()
@@ -52,7 +60,18 @@ JSBGodot::~JSBGodot()
 
 void JSBGodot::set_input_pitch(float value)
 {
-    input_pitch = value;
+    if (value < -1.0f)
+    {
+        input_pitch = -1.0f;
+    }
+    else if (value > 1.0f)
+    {
+        input_pitch = 1.0f;
+    }
+    else
+    {
+        input_pitch = value;
+    }
 }
 
 float JSBGodot::get_input_pitch() const
@@ -67,7 +86,18 @@ float JSBGodot::get_input_roll() const
 
 void JSBGodot::set_input_roll(float value)
 {
-    input_roll = value;
+    if (value < -1.0f)
+    {
+        input_roll = -1.0f;
+    }
+    else if (value > 1.0f)
+    {
+        input_roll = 1.0f;
+    }
+    else
+    {
+       input_roll = value;
+    }
 }
 
 float JSBGodot::get_input_rudder() const
@@ -77,7 +107,18 @@ float JSBGodot::get_input_rudder() const
 
 void JSBGodot::set_input_rudder(float value)
 {
-    input_rudder = value;
+    if (value < -1.0f)
+    {
+        input_rudder = -1.0f;
+    }
+    else if (value > 1.0f)
+    {
+        input_rudder = 1.0f;
+    }
+    else
+    {
+        input_rudder = value;
+    }
 }
 
 float JSBGodot::get_input_throttle() const
@@ -87,7 +128,66 @@ float JSBGodot::get_input_throttle() const
 
 void JSBGodot::set_input_throttle(float value)
 {
-    input_throttle = value;
+    if (value < 0.0f)
+    {
+        input_throttle = 0.0f;
+    }
+    else if (value > 1.0f)
+    {
+        input_throttle = 1.0f;
+    }
+    else
+    {
+        input_throttle = value;
+    }
+}
+
+void JSBGodot::set_input_aileron(float value) {
+    //input_aileron = CLAMP(value, -1.0f, 1.0f);
+    if (value < -1.0f)
+    {
+        input_aileron = -1.0f;
+    }
+    else if (value > 1.0f)
+    {
+        input_aileron = 1.0f;
+    }
+    else
+    {
+     input_aileron = value;
+    }
+}
+
+void JSBGodot::set_input_elevator(float value) {
+   // input_elevator = CLAMP(value, -1.0f, 1.0f);
+   if (value < -1.0f)
+    {
+        input_elevator = -1.0f;
+    }
+    else if (value > 1.0f)
+    {
+        input_elevator = 1.0f;
+    }
+    else
+    {
+        input_elevator = value;
+    }
+}
+
+double JSBGodot::get_airspeed_knots() const {
+    return airspeed_knots;
+}
+
+double JSBGodot::get_vertical_speed_fpm() const {
+    return vertical_speed_fpm;
+}
+
+double JSBGodot::get_altitude_ft() const {
+    return altitude_ft;
+}
+
+double JSBGodot::get_heading() const {
+    return heading_deg;
 }
 
 void JSBGodot::_input(const Ref<InputEvent> event)
@@ -168,17 +268,6 @@ void JSBGodot::_input(const Ref<InputEvent> event)
     }
 }
 
-
-void JSBGodot::set_input_aileron(float value) {
-    //input_aileron = CLAMP(value, -1.0f, 1.0f);
-    input_aileron = value;
-}
-
-void JSBGodot::set_input_elevator(float value) {
-   // input_elevator = CLAMP(value, -1.0f, 1.0f);
-    input_elevator = value;
-}
-
 void JSBGodot::_process(double delta)
 {
     //    if (FDMExec) {
@@ -255,7 +344,7 @@ void JSBGodot::initialise()
     // Set initial position
     ic->SetLatitudeDegIC(0.0);
     ic->SetLongitudeDegIC(0.0);
-    ic->SetAltitudeASLFtIC(15 * 3.28084); // Convert meters to feet
+    ic->SetAltitudeASLFtIC(5 * 3.28084); // Convert meters to feet
 
     // Set initial orientation
     ic->SetThetaDegIC(0.0); // Pitch
@@ -374,13 +463,13 @@ void JSBGodot::copy_outputs_from_JSBSim()
     // Get aircraft position in geographic coordinates
     double latitude = Propagate->GetLatitudeDeg();
     double longitude = Propagate->GetLongitudeDeg();
-    double altitude_ft = Propagate->GetAltitudeASL();
+    altitude_ft = Propagate->GetAltitudeASL();
 
     // Convert altitude from feet to meters
     double altitude_m = altitude_ft * 0.3048;
 
     // Print the geographic coordinates
-    printf("Latitude: %f, Longitude: %f, Altitude: %f ft\n", latitude, longitude, altitude_ft);
+    // printf("Latitude: %f, Longitude: %f, Altitude: %f ft\n", latitude, longitude, altitude_ft);
 
     // Get local position in meters
     Vector3 local_position = lat_lon_alt_to_local(latitude, longitude, altitude_m);
@@ -413,15 +502,23 @@ void JSBGodot::copy_outputs_from_JSBSim()
     
     // Access vertical speed (v-down-fps is positive downwards)
     double vertical_speed_fps = -FDMExec->GetPropertyValue("velocities/v-down-fps");
-    double vertical_speed_fpm = vertical_speed_fps * 60.0;
-
-    // Print the values
-    printf("True Airspeed: %.2f knots, Indicated Airspeed: %.2f knots\n", tas_knots, ias_knots);
-    printf("Vertical Speed: %.2f fps (%.2f fpm)\n", vertical_speed_fps, vertical_speed_fpm);
+    vertical_speed_fpm = vertical_speed_fps * 60.0;
 
     double engine_thrust = FDMExec->GetPropulsion()->GetEngine(0)->GetThruster()->GetThrust();
 
     printf("Engine Thrust: %f N\n", engine_thrust);
     printf("roll: %f, pitch: %f, yaw: %f\n", bank, pitch, heading);
+    
+    airspeed_knots = FDMExec->GetPropertyValue("velocities/vc-kts");
+        
+    // Get the heading in degrees from the property tree
+    heading_deg = FDMExec->GetPropertyValue("attitude/psi-deg");
+    heading_deg = fmod(360.0 - heading_deg, 360.0);
+
+    // Convert heading to radians if needed
+    double heading_rad = Math::deg_to_rad(heading_deg);
+
+    printf("heading %f\n", heading_deg);
+    printf("heading_rad %f\n", heading_rad);
 
 }
