@@ -24,6 +24,8 @@ private:
     float input_elevator = 0.0f; // Elevator input (-1.0 to 1.0)
     double altitude_ft = 0.0;
     double heading_deg = 0.0;
+    // Existing control input variables...
+    float input_brake = 0.0f; // Brake input (0.0 to 1.0)
 
     double airspeed_knots;
     double vertical_speed_fpm;
@@ -62,6 +64,11 @@ public:
     double get_vertical_speed_fpm() const;
     double get_altitude_ft() const;
     double get_heading() const;
+    // Setter for brake input
+    void set_input_brake(float value);
+
+    // Getter for brake input (if needed)
+    float get_input_brake() const;
 };
 
 }

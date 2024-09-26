@@ -1,0 +1,18 @@
+3d Polygon Model of Cottage 
+Perfect for animations, visualizations & games.
+
+Features:
+Geometry - Polygons  ( Faces - 6494  Verts - 10498) 
+Available formats  Autodesk FBX,    Maya binary .mb
+Realistic 3d Model with Clean Topology, No additional plugins Required
+All Pivots Centered , Transformations Freezed & Objects Properly named.
+Textures are included . JPG  1000x1000,  1000x985,   1024x1024,  1024x461, 522x514
+
+Rendered using Maya Software and Mental Ray.
+
+Please visit my site:
+
+www.animatedheaven.snappages.com
+
+
+ 

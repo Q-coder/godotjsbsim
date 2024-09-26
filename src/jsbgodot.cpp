@@ -34,6 +34,8 @@ void JSBGodot::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_vertical_speed_fpm"), &JSBGodot::get_vertical_speed_fpm);
     ClassDB::bind_method(D_METHOD("get_altitude_ft"), &JSBGodot::get_altitude_ft);
     ClassDB::bind_method(D_METHOD("get_heading"), &JSBGodot::get_heading);
+    ClassDB::bind_method(D_METHOD("set_input_brake", "value"), &JSBGodot::set_input_brake);
+    ClassDB::bind_method(D_METHOD("get_input_brake"), &JSBGodot::get_input_brake);
 
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_pitch"), "set_input_pitch", "get_input_pitch");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_roll"), "set_input_roll", "get_input_roll");
@@ -43,6 +45,7 @@ void JSBGodot::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "vertical_speed_fpm", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "", "get_vertical_speed_fpm");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "altitude_ft", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "", "get_altitude_ft");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "heading", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "", "get_heading");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_brake"), "set_input_brake", "get_input_brake");
 }
 
 JSBGodot::JSBGodot()
@@ -174,6 +177,14 @@ void JSBGodot::set_input_elevator(float value) {
     }
 }
 
+void JSBGodot::set_input_brake(float value) {
+    input_brake = CLAMP(value, 0.0f, 1.0f);
+}
+
+float JSBGodot::get_input_brake() const {
+    return input_brake;
+}
+
 double JSBGodot::get_airspeed_knots() const {
     return airspeed_knots;
 }
@@ -264,6 +275,16 @@ void JSBGodot::_input(const Ref<InputEvent> event)
                 set_process(false);
                 printf("Process ended\n");
             }
+            if (keycode == KEY_PERIOD)
+            {
+                set_input_brake(1.0f);
+                printf("Brakes applied\n");
+            }
+            else if (keycode == KEY_COMMA)
+            {
+                set_input_brake(0.0f);
+                printf("Brakes released\n");
+            }
         }
     }
 }
@@ -344,7 +365,7 @@ void JSBGodot::initialise()
     // Set initial position
     ic->SetLatitudeDegIC(0.0);
     ic->SetLongitudeDegIC(0.0);
-    ic->SetAltitudeASLFtIC(5 * 3.28084); // Convert meters to feet
+    ic->SetAltitudeASLFtIC(1 * 3.28084); // Convert meters to feet
 
     // Set initial orientation
     ic->SetThetaDegIC(0.0); // Pitch
@@ -399,7 +420,11 @@ void JSBGodot::copy_inputs_to_JSBSim()
     FDMExec->SetPropertyValue("fcs/aileron-cmd-norm", input_aileron);
     FDMExec->SetPropertyValue("fcs/elevator-cmd-norm", input_elevator);
     FDMExec->SetPropertyValue("fcs/rudder-cmd-norm", input_rudder);
-    FDMExec->SetPropertyValue("fcs/throttle-cmd-norm", input_throttle);
+    FDMExec->SetPropertyValue("fcs/throttle-cmd-norm", input_throttle); 
+
+        // Set the brake command
+    FDMExec->SetPropertyValue("fcs/left-brake-cmd-norm", input_brake);
+    FDMExec->SetPropertyValue("fcs/right-brake-cmd-norm", input_brake);
 
     printf("Control inputs applied: Aileron=%f, Elevator=%f, Rudder=%f, Throttle=%f\n",
            input_aileron, input_elevator, input_rudder, input_throttle);

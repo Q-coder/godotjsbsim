@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3 uid="uid://d4gjglrwmtar4"]
+[gd_scene load_steps=7 format=3 uid="uid://d4gjglrwmtar4"]
 
 [ext_resource type="Script" path="res://node_3d.gd" id="1_1r08c"]
 [ext_resource type="PackedScene" uid="uid://donvtr02hvkxe" path="res://ground.tscn" id="1_6r2e6"]
 [ext_resource type="PackedScene" uid="uid://dxgh4imubsngc" path="res://ac.tscn" id="2_yxcfd"]
 [ext_resource type="PackedScene" uid="uid://dssmgx0csel6d" path="res://runway.tscn" id="4_w0gyf"]
+[ext_resource type="PackedScene" uid="uid://xq3lvbf0alcb" path="res://house_1.tscn" id="5_hatek"]
 
 [sub_resource type="Environment" id="Environment_aeqfu"]
 background_color = Color(0, 0, 0.898039, 1)
@@ -14,7 +15,7 @@ ambient_light_color = Color(0, 0, 0.956863, 1)
 script = ExtResource("1_1r08c")
 
 [node name="AC" parent="." instance=ExtResource("2_yxcfd")]
-transform = Transform3D(-0.862098, -0.0304061, 0.505827, -3.53861e-09, 0.998198, 0.0600032, -0.506741, 0.0517287, -0.860544, -208.277, 53.9834, 389.628)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.999999, -0.137016, 8.37786, -0.244638)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_aeqfu")
@@ -93,4 +94,16 @@ transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, 2736.84, -6.96362, 524.05
 transform = Transform3D(400.496, 0, 0, 0, 1.00124, 0, 0, 0, 400.496, 2738.05, -6.96362, -2649.3)
 
 [node name="Runway" parent="." instance=ExtResource("4_w0gyf")]
-transform = Transform3D(-1.84465e-07, 0, 4.36856, 0, 1, 0, -4.22006, 0, -1.90956e-07, 7.02832, -3.49959, 531.932)
+transform = Transform3D(-1.84465e-07, 0, 4.36856, 0, 1, 0, -4.22006, 0, -1.90956e-07, 0.52774, -3.49959, 531.932)
+
+[node name="House1" parent="." instance=ExtResource("5_hatek")]
+transform = Transform3D(0.00219913, 0, -0.999998, 0, 1, 0, 0.999998, 0, 0.00219913, 302.442, 0, -79.6619)
+
+[node name="House2" parent="." instance=ExtResource("5_hatek")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -256.099, 0, 1100)
+
+[node name="House5" parent="." instance=ExtResource("5_hatek")]
+transform = Transform3D(-0.0138051, 0, -0.999905, 0, 1, 0, 0.999905, 0, -0.0138051, -1068.16, -5.32579, -2428.81)
+
+[node name="House6" parent="." instance=ExtResource("5_hatek")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2157.93, -3.32863, -3459.35)

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://xq3lvbf0alcb"]
+
+[ext_resource type="PackedScene" uid="uid://cxoxgeo6utimv" path="res://Assets/cs5xpgzxg9vk-Cottage/Cottage Autodesk FBX/CottageFBX.fbx" id="1_uvjmf"]
+
+[node name="House1" type="Node3D"]
+
+[node name="CottageFBX" parent="." instance=ExtResource("1_uvjmf")]
+transform = Transform3D(50, 0, 0, 0, 50, 0, 0, 0, 50, -0.445411, -6.16347, -0.356807)
