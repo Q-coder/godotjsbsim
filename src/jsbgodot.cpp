@@ -99,7 +99,7 @@ void JSBGodot::set_input_roll(float value)
     }
     else
     {
-       input_roll = value;
+        input_roll = value;
     }
 }
 
@@ -145,8 +145,9 @@ void JSBGodot::set_input_throttle(float value)
     }
 }
 
-void JSBGodot::set_input_aileron(float value) {
-    //input_aileron = CLAMP(value, -1.0f, 1.0f);
+void JSBGodot::set_input_aileron(float value)
+{
+    // input_aileron = CLAMP(value, -1.0f, 1.0f);
     if (value < -1.0f)
     {
         input_aileron = -1.0f;
@@ -157,13 +158,14 @@ void JSBGodot::set_input_aileron(float value) {
     }
     else
     {
-     input_aileron = value;
+        input_aileron = value;
     }
 }
 
-void JSBGodot::set_input_elevator(float value) {
-   // input_elevator = CLAMP(value, -1.0f, 1.0f);
-   if (value < -1.0f)
+void JSBGodot::set_input_elevator(float value)
+{
+    // input_elevator = CLAMP(value, -1.0f, 1.0f);
+    if (value < -1.0f)
     {
         input_elevator = -1.0f;
     }
@@ -177,27 +179,43 @@ void JSBGodot::set_input_elevator(float value) {
     }
 }
 
-void JSBGodot::set_input_brake(float value) {
+void JSBGodot::increase_flaps()
+{
+    flaps = CLAMP(flaps + 0.05f, 0.0f, 1.0f);
+}
+
+void JSBGodot::decrease_flaps()
+{
+    flaps = CLAMP(flaps - 0.05f, 0.0f, 1.0f);
+}
+
+void JSBGodot::set_input_brake(float value)
+{
     input_brake = CLAMP(value, 0.0f, 1.0f);
 }
 
-float JSBGodot::get_input_brake() const {
+float JSBGodot::get_input_brake() const
+{
     return input_brake;
 }
 
-double JSBGodot::get_airspeed_knots() const {
+double JSBGodot::get_airspeed_knots() const
+{
     return airspeed_knots;
 }
 
-double JSBGodot::get_vertical_speed_fpm() const {
+double JSBGodot::get_vertical_speed_fpm() const
+{
     return vertical_speed_fpm;
 }
 
-double JSBGodot::get_altitude_ft() const {
+double JSBGodot::get_altitude_ft() const
+{
     return altitude_ft;
 }
 
-double JSBGodot::get_heading() const {
+double JSBGodot::get_heading() const
+{
     return heading_deg;
 }
 
@@ -350,7 +368,7 @@ void JSBGodot::_ready()
     }
     else
     {
-        printf("Failed to load JSBSim model 'c172p'.\n");
+        printf("Failed to load JSBSim model 'c172p.\n");
         return; // Early exit if model loading fails
     }
 
@@ -383,7 +401,7 @@ void JSBGodot::initialise()
     // Set mixture to full rich
     FDMExec->SetPropertyValue("fcs/mixture-cmd-norm", 1.0);
     // Set magnetos to both
-    FDMExec->SetPropertyValue("propulsion/magneto_cmd", 3);  // 3 = Both
+    FDMExec->SetPropertyValue("propulsion/magneto_cmd", 3); // 3 = Both
     // Start the engine
     FDMExec->SetPropertyValue("propulsion/starter_cmd", 1.0);
     // Ensure the pitot-static system is enabled (example property)
@@ -410,19 +428,19 @@ void JSBGodot::copy_inputs_to_JSBSim()
     }
 
     // Apply input commands to the FCS
-//    FCS->SetDeCmd(input_pitch);
-//    FCS->SetDaCmd(input_roll);
-//    FCS->SetDrCmd(input_rudder);
-//    FCS->SetThrottleCmd(-1, input_throttle);
-//    printf("Inputs copied to JSBSim FCS. Throttle: %f\n", input_throttle);
+    //    FCS->SetDeCmd(input_pitch);
+    //    FCS->SetDaCmd(input_roll);
+    //    FCS->SetDrCmd(input_rudder);
+    //    FCS->SetThrottleCmd(-1, input_throttle);
+    //    printf("Inputs copied to JSBSim FCS. Throttle: %f\n", input_throttle);
 
-        // Set control surface deflections via the property tree
+    // Set control surface deflections via the property tree
     FDMExec->SetPropertyValue("fcs/aileron-cmd-norm", input_aileron);
     FDMExec->SetPropertyValue("fcs/elevator-cmd-norm", input_elevator);
     FDMExec->SetPropertyValue("fcs/rudder-cmd-norm", input_rudder);
-    FDMExec->SetPropertyValue("fcs/throttle-cmd-norm", input_throttle); 
+    FDMExec->SetPropertyValue("fcs/throttle-cmd-norm", input_throttle);
 
-        // Set the brake command
+    // Set the brake command
     FDMExec->SetPropertyValue("fcs/left-brake-cmd-norm", input_brake);
     FDMExec->SetPropertyValue("fcs/right-brake-cmd-norm", input_brake);
 
@@ -451,7 +469,8 @@ Vector3 lat_lon_alt_to_local(float latitude, float longitude, float altitude)
     double lat_rad = Math::deg_to_rad(latitude);
     double lon_rad = Math::deg_to_rad(longitude);
 
-    if (!reference_set) {
+    if (!reference_set)
+    {
         ref_lat_rad = lat_rad;
         ref_lon_rad = lon_rad;
         ref_alt = altitude;
@@ -474,13 +493,15 @@ Vector3 lat_lon_alt_to_local(float latitude, float longitude, float altitude)
 
 void JSBGodot::copy_outputs_from_JSBSim()
 {
-   // Ensure FDMExec and Propagate are valid
-    if (!FDMExec) {
+    // Ensure FDMExec and Propagate are valid
+    if (!FDMExec)
+    {
         printf("FDMExec is null!\n");
         return;
     }
     auto Propagate = FDMExec->GetPropagate();
-    if (!Propagate) {
+    if (!Propagate)
+    {
         printf("Propagate is null!\n");
         return;
     }
@@ -509,7 +530,8 @@ void JSBGodot::copy_outputs_from_JSBSim()
 
     // Get the parent node
     Node3D *parent_node = Object::cast_to<Node3D>(get_parent());
-    if (!parent_node) {
+    if (!parent_node)
+    {
         printf("Parent node is null!\n");
         return;
     }
@@ -521,10 +543,10 @@ void JSBGodot::copy_outputs_from_JSBSim()
     printf("Updated parent (AC) position to x: %f, y: %f, z: %f\n",
            local_position.x, local_position.y, local_position.z);
 
-        // Access airspeed from the property tree
+    // Access airspeed from the property tree
     double tas_knots = FDMExec->GetPropertyValue("aero/qbar-psf");
     double ias_knots = FDMExec->GetPropertyValue("velocities/vc-kts");
-    
+
     // Access vertical speed (v-down-fps is positive downwards)
     double vertical_speed_fps = -FDMExec->GetPropertyValue("velocities/v-down-fps");
     vertical_speed_fpm = vertical_speed_fps * 60.0;
@@ -533,9 +555,9 @@ void JSBGodot::copy_outputs_from_JSBSim()
 
     printf("Engine Thrust: %f N\n", engine_thrust);
     printf("roll: %f, pitch: %f, yaw: %f\n", bank, pitch, heading);
-    
+
     airspeed_knots = FDMExec->GetPropertyValue("velocities/vc-kts");
-        
+
     // Get the heading in degrees from the property tree
     heading_deg = FDMExec->GetPropertyValue("attitude/psi-deg");
     heading_deg = fmod(360.0 - heading_deg, 360.0);
@@ -545,5 +567,4 @@ void JSBGodot::copy_outputs_from_JSBSim()
 
     printf("heading %f\n", heading_deg);
     printf("heading_rad %f\n", heading_rad);
-
 }
