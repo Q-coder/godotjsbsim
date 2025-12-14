@@ -4,7 +4,9 @@
 #include "FGFDMExec.h"
 
 #include <godot_cpp/classes/node3d.hpp>
-#include <godot_cpp/classes/input_event.hpp> // Ensure InputEvent is fully included
+#include <godot_cpp/classes/input_event.hpp>
+#include <godot_cpp/classes/input_event_joypad_motion.hpp>
+#include <godot_cpp/classes/input_event_joypad_button.hpp>
 
 namespace godot
 {
@@ -60,7 +62,9 @@ namespace godot
         float get_input_throttle() const;
 
         void set_input_elevator(float value);
+        float get_input_elevator() const;
         void set_input_aileron(float value);
+        float get_input_aileron() const;
 
         double get_airspeed_knots() const;
         double get_vertical_speed_fpm() const;
@@ -75,6 +79,7 @@ namespace godot
         // Setter for flaps input
         void increase_flaps();
         void decrease_flaps();
+        float get_flaps() const;
     };
 
 }

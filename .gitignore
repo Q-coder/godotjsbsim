@@ -1,0 +1,38 @@
+# Godot
+.godot/
+*.import
+
+# Build artifacts
+*.o
+*.os
+*.a
+*.dylib
+*.so
+*.dll
+.sconsign.dblite
+
+# macOS
+.DS_Store
+*.dSYM/
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+
+# Compiled binaries (keep in bin/ for distribution)
+libgojb.macos.template_debug.arm64.dylib
+libgojb.macos.template_release.arm64.dylib
+libgojb.linux.template_debug.x86_64.so
+libgojb.linux.template_release.x86_64.so
+
+# JSBSim build artifacts
+jsbsim/build/
+
+# Python
+__pycache__/
+*.pyc
+
+# Godot UID files (auto-generated)
+*.uid

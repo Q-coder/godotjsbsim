@@ -12,13 +12,13 @@ albedo_texture = ExtResource("1_iv7jt")
 roughness_texture = ExtResource("3_xovwv")
 normal_enabled = true
 normal_texture = ExtResource("2_i16yg")
-uv1_scale = Vector3(3, 3, 3)
+uv1_scale = Vector3(15, 15, 15)
 uv1_triplanar = true
 
-[node name="Ground" type="Node3D"]
+[node name="Ground" type="Node3D" unique_id=1000671294]
 transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, 0, -6.96362, 0)
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1535835607]
 transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 0.0134685, 0, -0.00602007)
 mesh = SubResource("PlaneMesh_dywc5")
 surface_material_override/0 = SubResource("StandardMaterial3D_hq7bp")

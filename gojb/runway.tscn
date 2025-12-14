@@ -9,9 +9,9 @@ albedo_texture = ExtResource("1_gm1g0")
 uv1_scale = Vector3(2.97, 2, 1)
 uv1_offset = Vector3(0.01, 0, 0)
 
-[node name="Runway" type="Node3D"]
+[node name="Runway" type="Node3D" unique_id=1735903714]
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-transform = Transform3D(257.544, 0, 0, 0, 0.0451086, 0, 0, 0, 14.6632, 0, 0, 0)
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=404370008]
+transform = Transform3D(146.4412, 0, 0, 0, 0.0451086, 0, 0, 0, 10.421236, 0, 0, 0)
 mesh = SubResource("BoxMesh_fbrd8")
 surface_material_override/0 = SubResource("StandardMaterial3D_isauo")

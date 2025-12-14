@@ -11,22 +11,22 @@ background_color = Color(0, 0, 0.898039, 1)
 background_energy_multiplier = 3.06
 ambient_light_color = Color(0, 0, 0.956863, 1)
 
-[node name="Node3D" type="Node3D"]
+[node name="Node3D" type="Node3D" unique_id=1069261226]
 script = ExtResource("1_1r08c")
 
-[node name="AC" parent="." instance=ExtResource("2_yxcfd")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.999999, -0.137016, -6.85543, -0.244638)
+[node name="AC" parent="." unique_id=754408209 instance=ExtResource("2_yxcfd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.999999, -0.13541573, 1.3129692, -0.24543622)
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1885403404]
 environment = SubResource("Environment_aeqfu")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=391543478]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.94035, 4.38032, 3.73175)
 
-[node name="Ground2" parent="." instance=ExtResource("1_6r2e6")]
-transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, -462.008, -7.78856, 527.369)
+[node name="Ground2" parent="." unique_id=452216516 instance=ExtResource("1_6r2e6")]
+transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, -462.008, -1.010026, 527.369)
 
-[node name="Control" type="Control" parent="."]
+[node name="Control" type="Control" parent="." unique_id=1312208183]
 layout_mode = 3
 anchors_preset = 0
 offset_left = 4.0
@@ -34,7 +34,7 @@ offset_top = 2.0
 offset_right = 255.0
 offset_bottom = 208.0
 
-[node name="Label" type="Label" parent="Control"]
+[node name="Label" type="Label" parent="Control" unique_id=1807507576]
 modulate = Color(0.509804, 1, 1, 1)
 layout_mode = 0
 offset_left = 35.0
@@ -45,7 +45,7 @@ scale = Vector2(5, 5)
 text = "Text"
 vertical_alignment = 1
 
-[node name="Label2" type="Label" parent="Control"]
+[node name="Label2" type="Label" parent="Control" unique_id=144761800]
 modulate = Color(0.364706, 1, 1, 1)
 layout_mode = 0
 offset_left = 1122.0
@@ -55,7 +55,7 @@ offset_bottom = 2406.0
 scale = Vector2(5, 5)
 text = "text 2"
 
-[node name="Label3" type="Label" parent="Control"]
+[node name="Label3" type="Label" parent="Control" unique_id=1719974323]
 modulate = Color(0.482353, 1, 1, 1)
 layout_mode = 0
 offset_left = 1999.0
@@ -65,7 +65,7 @@ offset_bottom = 2402.0
 scale = Vector2(5, 5)
 text = "text 3"
 
-[node name="Label4" type="Label" parent="Control"]
+[node name="Label4" type="Label" parent="Control" unique_id=531801771]
 modulate = Color(0.490196, 1, 1, 1)
 layout_mode = 0
 offset_left = 3089.0
@@ -75,7 +75,7 @@ offset_bottom = 2371.0
 scale = Vector2(5, 5)
 text = "Text 4"
 
-[node name="Label5" type="Label" parent="Control"]
+[node name="Label5" type="Label" parent="Control" unique_id=201692843]
 modulate = Color(0.329412, 1, 1, 1)
 layout_mode = 0
 offset_left = 3818.0
@@ -86,26 +86,26 @@ scale = Vector2(5, 5)
 text = "Text 5
 "
 
-[node name="Ground" parent="." instance=ExtResource("1_6r2e6")]
+[node name="Ground" parent="." unique_id=684589210 instance=ExtResource("1_6r2e6")]
 transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, -461.269, -6.96362, -2672.6)
 
-[node name="Ground3" parent="." instance=ExtResource("1_6r2e6")]
+[node name="Ground3" parent="." unique_id=1111672225 instance=ExtResource("1_6r2e6")]
 transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, 2736.84, -6.96362, 524.052)
 
-[node name="Ground4" parent="." instance=ExtResource("1_6r2e6")]
+[node name="Ground4" parent="." unique_id=1320387918 instance=ExtResource("1_6r2e6")]
 transform = Transform3D(400.496, 0, 0, 0, 1.00124, 0, 0, 0, 400.496, 2738.05, -6.96362, -2649.3)
 
-[node name="Runway" parent="." instance=ExtResource("4_w0gyf")]
-transform = Transform3D(-1.84465e-07, 0, 4.36856, 0, 1, 0, -4.22006, 0, -1.90956e-07, 0.52774, -7.77892, 531.932)
+[node name="Runway" parent="." unique_id=1224639926 instance=ExtResource("4_w0gyf")]
+transform = Transform3D(-1.84465e-07, 0, 4.36856, 0, 1, 0, -4.22006, 0, -1.90956e-07, 0.52774, -0.512528, 251.932)
 
-[node name="House1" parent="." instance=ExtResource("5_hatek")]
-transform = Transform3D(0.00219913, 0, -0.999998, 0, 1, 0, 0.999998, 0, 0.00219913, 302.442, 0, -79.6619)
+[node name="House1" parent="." unique_id=1166139611 instance=ExtResource("5_hatek")]
+transform = Transform3D(0.00219913, 0, -0.999998, 0, 1, 0, 0.999998, 0, 0.00219913, 302.79245, 7.35746, -79.6619)
 
-[node name="House2" parent="." instance=ExtResource("5_hatek")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -256.099, 0, 1100)
+[node name="House2" parent="." unique_id=329612252 instance=ExtResource("5_hatek")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -256.099, 6.755657, 1100)
 
-[node name="House5" parent="." instance=ExtResource("5_hatek")]
+[node name="House5" parent="." unique_id=409902025 instance=ExtResource("5_hatek")]
 transform = Transform3D(-0.0138051, 0, -0.999905, 0, 1, 0, 0.999905, 0, -0.0138051, -1068.16, -5.32579, -2428.81)
 
-[node name="House6" parent="." instance=ExtResource("5_hatek")]
+[node name="House6" parent="." unique_id=1529045327 instance=ExtResource("5_hatek")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2157.93, -3.32863, -3459.35)

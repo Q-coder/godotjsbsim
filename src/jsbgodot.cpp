@@ -11,6 +11,7 @@
 #include <godot_cpp/classes/scene_tree.hpp>      // Include SceneTree header
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/variant/utility_functions.hpp> // For UtilityFunctions::print
 #include <unistd.h>
 #include <cmath>
 #include <exception>
@@ -21,7 +22,7 @@ const float EARTH_RADIUS = 6371000.0; // Radius of Earth in meters
 
 void JSBGodot::_bind_methods()
 {
-    ClassDB::bind_method(D_METHOD("_process", "delta"), &JSBGodot::_process);
+    // Don't bind _process - it's a virtual method that's automatically overridden
     ClassDB::bind_method(D_METHOD("set_input_pitch", "value"), &JSBGodot::set_input_pitch);
     ClassDB::bind_method(D_METHOD("get_input_pitch"), &JSBGodot::get_input_pitch);
     ClassDB::bind_method(D_METHOD("set_input_roll", "value"), &JSBGodot::set_input_roll);
@@ -36,6 +37,9 @@ void JSBGodot::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_heading"), &JSBGodot::get_heading);
     ClassDB::bind_method(D_METHOD("set_input_brake", "value"), &JSBGodot::set_input_brake);
     ClassDB::bind_method(D_METHOD("get_input_brake"), &JSBGodot::get_input_brake);
+    ClassDB::bind_method(D_METHOD("get_input_aileron"), &JSBGodot::get_input_aileron);
+    ClassDB::bind_method(D_METHOD("get_input_elevator"), &JSBGodot::get_input_elevator);
+    ClassDB::bind_method(D_METHOD("get_flaps"), &JSBGodot::get_flaps);
 
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_pitch"), "set_input_pitch", "get_input_pitch");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_roll"), "set_input_roll", "get_input_roll");
@@ -162,6 +166,11 @@ void JSBGodot::set_input_aileron(float value)
     }
 }
 
+float JSBGodot::get_input_aileron() const
+{
+    return input_aileron;
+}
+
 void JSBGodot::set_input_elevator(float value)
 {
     // input_elevator = CLAMP(value, -1.0f, 1.0f);
@@ -179,14 +188,24 @@ void JSBGodot::set_input_elevator(float value)
     }
 }
 
+float JSBGodot::get_input_elevator() const
+{
+    return input_elevator;
+}
+
 void JSBGodot::increase_flaps()
 {
-    flaps = CLAMP(flaps + 0.05f, 0.0f, 1.0f);
+    flaps = CLAMP(flaps + 0.25f, 0.0f, 1.0f);  // 0, 10, 20, 30, 40 degrees
 }
 
 void JSBGodot::decrease_flaps()
 {
-    flaps = CLAMP(flaps - 0.05f, 0.0f, 1.0f);
+    flaps = CLAMP(flaps - 0.25f, 0.0f, 1.0f);  // 0, 10, 20, 30, 40 degrees
+}
+
+float JSBGodot::get_flaps() const
+{
+    return flaps;
 }
 
 void JSBGodot::set_input_brake(float value)
@@ -305,6 +324,69 @@ void JSBGodot::_input(const Ref<InputEvent> event)
             }
         }
     }
+    // Gamepad input handling
+    else if (event->is_class("InputEventJoypadMotion"))
+    {
+        Ref<InputEventJoypadMotion> joypad_event = event;
+        int axis = joypad_event->get_axis();
+        float value = joypad_event->get_axis_value();
+        
+        // Left stick: Aileron (horizontal) and Elevator (vertical)
+        if (axis == JOY_AXIS_LEFT_X)
+        {
+            set_input_aileron(-value); // Left = positive, Right = negative
+        }
+        else if (axis == JOY_AXIS_LEFT_Y)
+        {
+            set_input_elevator(-value); // Up = positive, Down = negative
+        }
+        // Right stick: Rudder (horizontal) and Throttle (vertical)
+        else if (axis == JOY_AXIS_RIGHT_X)
+        {
+            set_input_rudder(value);
+        }
+        else if (axis == JOY_AXIS_RIGHT_Y)
+        {
+            // Convert -1 to 1 range to 0 to 1 for throttle
+            set_input_throttle((1.0f - value) / 2.0f);
+        }
+        // Triggers for brake/throttle alternative
+        else if (axis == JOY_AXIS_TRIGGER_RIGHT) // RT - Throttle
+        {
+            set_input_throttle(value); // 0 to 1
+        }
+        else if (axis == JOY_AXIS_TRIGGER_LEFT) // LT - Brake
+        {
+            set_input_brake(value); // 0 to 1
+        }
+    }
+    else if (event->is_class("InputEventJoypadButton"))
+    {
+        Ref<InputEventJoypadButton> button_event = event;
+        if (button_event->is_pressed())
+        {
+            int button = button_event->get_button_index();
+            
+            if (button == JOY_BUTTON_A) // A button
+            {
+                increase_flaps();
+            }
+            else if (button == JOY_BUTTON_B) // B button
+            {
+                decrease_flaps();
+            }
+            else if (button == JOY_BUTTON_START) // Start
+            {
+                set_process(true);
+                printf("Process started (gamepad)\n");
+            }
+            else if (button == JOY_BUTTON_BACK) // Back/Select
+            {
+                set_process(false);
+                printf("Process ended (gamepad)\n");
+            }
+        }
+    }
 }
 
 void JSBGodot::_process(double delta)
@@ -335,18 +417,18 @@ void JSBGodot::_physics_process(const real_t delta)
 
 void JSBGodot::_ready()
 {
-    printf("Initializing JSBGodot...\n");
+    UtilityFunctions::print("Initializing JSBGodot...");
 
     if (!FDMExec)
     {
         FDMExec = new JSBSim::FGFDMExec();
         if (FDMExec)
         {
-            printf("FGFDMExec instance created successfully.\n");
+            UtilityFunctions::print("FGFDMExec instance created successfully.");
         }
         else
         {
-            printf("Failed to create FGFDMExec instance!\n");
+            UtilityFunctions::print("Failed to create FGFDMExec instance!");
             return; // Prevent further execution if creation fails
         }
     }
@@ -356,7 +438,7 @@ void JSBGodot::_ready()
     FDMExec->SetAircraftPath(SGPath("/Users/gerhardgubler/code/godotjbsim/jsbsim/aircraft"));
     FDMExec->SetEnginePath(SGPath("/Users/gerhardgubler/code/godotjbsim/jsbsim/engine"));
     FDMExec->SetSystemsPath(SGPath("/Users/gerhardgubler/code/godotjbsim/jsbsim/systems"));
-    printf("JSBSim directories set.\n");
+    UtilityFunctions::print("JSBSim directories set.");
 
     // Load a known good aircraft model
     if (FDMExec->LoadModel(SGPath("aircraft"),
@@ -364,16 +446,20 @@ void JSBGodot::_ready()
                            SGPath("systems"),
                            "c172p"))
     {
-        printf("JSBSim model 'c172p' loaded successfully.\n");
+        UtilityFunctions::print("JSBSim model 'c172p' loaded successfully.");
     }
     else
     {
-        printf("Failed to load JSBSim model 'c172p.\n");
+        UtilityFunctions::print("Failed to load JSBSim model 'c172p'.");
         return; // Early exit if model loading fails
     }
 
     // Initialize the simulation
     initialise();
+    
+    // Enable physics processing so _physics_process will be called
+    set_physics_process(true);
+    UtilityFunctions::print("JSBGodot ready complete - physics enabled!");
 }
 
 void JSBGodot::initialise()
@@ -444,8 +530,11 @@ void JSBGodot::copy_inputs_to_JSBSim()
     FDMExec->SetPropertyValue("fcs/left-brake-cmd-norm", input_brake);
     FDMExec->SetPropertyValue("fcs/right-brake-cmd-norm", input_brake);
 
-    printf("Control inputs applied: Aileron=%f, Elevator=%f, Rudder=%f, Throttle=%f\n",
-           input_aileron, input_elevator, input_rudder, input_throttle);
+    // Set flaps command
+    FDMExec->SetPropertyValue("fcs/flap-cmd-norm", flaps);
+
+    printf("Control inputs applied: Aileron=%f, Elevator=%f, Rudder=%f, Throttle=%f, Flaps=%f\n",
+           input_aileron, input_elevator, input_rudder, input_throttle, flaps);
 }
 
 Vector3 lat_lon_alt_to_cartesian(float latitude, float longitude, float altitude)

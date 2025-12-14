@@ -2,17 +2,17 @@
 
 [ext_resource type="PackedScene" uid="uid://fg5qsd8aq40k" path="res://C172p.tscn" id="1_cykhh"]
 
-[node name="AC" type="Node3D"]
+[node name="AC" type="Node3D" unique_id=754408209]
 transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0.030987, 0)
 
-[node name="JSBGodot" type="JSBGodot" parent="."]
+[node name="JSBGodot" type="JSBGodot" parent="." unique_id=878366559]
 transform = Transform3D(1, 0, 0, 0, 0.999999, 0, 0, 0, 0.999999, 0, 0, 0)
 
-[node name="Camera1" type="Camera3D" parent="."]
-transform = Transform3D(-1.99995, -0.00520783, 0.0129549, -0.00534883, 1.99987, -0.021799, -0.0128973, -0.0218331, -1.99984, 0.302367, 1.14128, 0.061713)
+[node name="Camera1" type="Camera3D" parent="." unique_id=1471329839]
+transform = Transform3D(-1.9999512, -0.005207829, 0.012954886, -0.0053488333, 1.9998741, -0.02179903, -0.012897307, -0.021833144, -1.9998393, 0.34161547, 2.9964876, 0.9483354)
 
-[node name="Camera2" type="Camera3D" parent="."]
+[node name="Camera2" type="Camera3D" parent="." unique_id=1420690455]
 transform = Transform3D(-1.77676, -0.306971, 0.865386, -0.0332465, 1.9052, 0.607554, -0.917616, 0.525353, -1.69764, 3.91114, 2.52343, -4.77101)
 
-[node name="Node3D2" parent="." instance=ExtResource("1_cykhh")]
-transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0.0041275, -0.766159, 0.279023)
+[node name="Node3D2" parent="." unique_id=1789226288 instance=ExtResource("1_cykhh")]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0.0041275, -0.64688724, 0.279023)
