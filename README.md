@@ -111,11 +111,22 @@ godotjbsim/
 ## Control Surface Animation
 
 The aircraft model supports animated control surfaces:
-- **Propeller**: Spins based on throttle (600-2700 RPM)
+- **Propeller**: Spins based on throttle (600-2700 RPM) with blur disc at high RPM
 - **Ailerons**: ±20° deflection, opposite movement for roll
 - **Elevators**: ±25° deflection
 - **Rudder**: ±16° deflection
 - **Flaps**: 0°, 10°, 20°, 30°, 40° (C172 standard positions)
+
+### Propeller Animation
+
+The propeller uses a visibility-swapping technique for realistic appearance:
+- **Below 900 RPM**: Real propeller blades visible, spinning
+- **900-1200 RPM**: Transition zone with both blades and blur disc visible
+- **Above 1200 RPM**: Blur disc only (semi-transparent circular disc)
+
+This technique is commonly used in flight simulators to avoid the "wagon wheel" 
+effect of spinning propellers and provide a more realistic visual representation
+at high RPM.
 
 To animate control surfaces in your own aircraft model:
 1. Separate control surfaces as individual mesh objects in Blender

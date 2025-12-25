@@ -85,6 +85,9 @@ namespace godot
         void increase_flaps();
         void decrease_flaps();
         float get_flaps() const;
+
+        // Propeller RPM from JSBSim
+        double get_propeller_rpm() const;
     };
 
 }

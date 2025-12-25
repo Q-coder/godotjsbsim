@@ -40,6 +40,7 @@ void JSBGodot::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_input_aileron"), &JSBGodot::get_input_aileron);
     ClassDB::bind_method(D_METHOD("get_input_elevator"), &JSBGodot::get_input_elevator);
     ClassDB::bind_method(D_METHOD("get_flaps"), &JSBGodot::get_flaps);
+    ClassDB::bind_method(D_METHOD("get_propeller_rpm"), &JSBGodot::get_propeller_rpm);
 
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_pitch"), "set_input_pitch", "get_input_pitch");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_roll"), "set_input_roll", "get_input_roll");
@@ -50,6 +51,7 @@ void JSBGodot::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "altitude_ft", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "", "get_altitude_ft");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "heading", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "", "get_heading");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_brake"), "set_input_brake", "get_input_brake");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "propeller_rpm", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "", "get_propeller_rpm");
 }
 
 JSBGodot::JSBGodot()
@@ -227,6 +229,15 @@ float JSBGodot::get_flaps() const
         return FDMExec->GetPropertyValue("fcs/flap-pos-norm");
     }
     return flaps;
+}
+
+double JSBGodot::get_propeller_rpm() const
+{
+    // Return propeller RPM from JSBSim
+    if (FDMExec) {
+        return FDMExec->GetPropertyValue("propulsion/engine[0]/propeller-rpm");
+    }
+    return 0.0;
 }
 
 void JSBGodot::set_input_brake(float value)

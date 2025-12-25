@@ -34,9 +34,13 @@ var rudder_pivot_offset: Vector3 = Vector3(0, 0, 0)
 
 # Propeller
 var propeller_node: Node3D
+var propeller_blur_disc: MeshInstance3D  # Blur disc mesh
+var propeller_blur_material: Material  # Blur material (can be Standard or Shader)
 var propeller_rotation: float = 0.0  # Current rotation angle
-const PROPELLER_MAX_RPM: float = 2700.0  # Max RPM at full throttle
-const PROPELLER_IDLE_RPM: float = 600.0  # Idle RPM
+const PROPELLER_MAX_RPM: float = 2700.0  # Max RPM for reference
+const PROPELLER_BLUR_START_RPM: float = 900.0  # RPM where blur disc appears (above idle)
+const PROPELLER_HIDE_BLADES_RPM: float = 1200.0  # RPM where real blades hidden
+const PROPELLER_DISC_RADIUS: float = 0.95  # Radius of blur disc in meters
 
 # Ailerons
 var left_aileron_node: Node3D
@@ -97,6 +101,8 @@ func _ready() -> void:
 	propeller_node = get_node("AC/Node3D2/C172P_1/Sketchfab_model/Cessna172_fbx/RootNode/75f3edaeef374a9f89e7b5ef606a0759_fbx/RootNode_001/Cessna-172/Cessna_Exterior/Cessna_Exterior_Body_MAT_0_001/Cessna_Exterior_Body_MAT_0_001_Body_MAT_0")
 	if propeller_node:
 		print("Propeller node found: ", propeller_node)
+		# Create the propeller blur disc
+		_create_propeller_blur_disc()
 	else:
 		print("WARNING: Propeller node not found!")
 	
@@ -160,6 +166,54 @@ func _ready() -> void:
 	print("=== End Hierarchy ===")
 	
 	print("Node3D _ready() complete!")
+
+
+# Create the propeller blur disc mesh
+func _create_propeller_blur_disc() -> void:
+	# Use StandardMaterial3D - shaders have transparency issues
+	var blur_mat = StandardMaterial3D.new()
+	blur_mat.albedo_color = Color(0.15, 0.15, 0.18, 0.1)  # Dark gray, more transparent
+	blur_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	blur_mat.cull_mode = BaseMaterial3D.CULL_DISABLED  # Visible from both sides
+	blur_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # No lighting
+	propeller_blur_material = blur_mat
+	
+	# Get the propeller mesh's bounding box to determine disc size
+	if propeller_node is MeshInstance3D:
+		var mesh_inst = propeller_node as MeshInstance3D
+		var aabb = mesh_inst.get_aabb()
+		var mesh_center = aabb.position + aabb.size / 2.0
+		
+		# Propeller diameter is the Y size (blades extend along Y axis)
+		var prop_diameter = aabb.size.y
+		var prop_radius = prop_diameter / 2.0
+		print("Propeller diameter: ", prop_diameter, " cm")
+		
+		# Create a circular disc using CylinderMesh (very thin cylinder = disc)
+		var disc_mesh = CylinderMesh.new()
+		disc_mesh.top_radius = prop_radius
+		disc_mesh.bottom_radius = prop_radius
+		disc_mesh.height = 0.5  # Very thin
+		disc_mesh.radial_segments = 32  # Smooth circle
+		disc_mesh.rings = 1
+		
+		# Create MeshInstance3D for the blur disc
+		propeller_blur_disc = MeshInstance3D.new()
+		propeller_blur_disc.mesh = disc_mesh
+		propeller_blur_disc.material_override = propeller_blur_material
+		propeller_blur_disc.visible = false  # Start hidden
+		
+		# Add as sibling to propeller's parent
+		var prop_parent = propeller_node.get_parent()
+		if prop_parent:
+			prop_parent.add_child(propeller_blur_disc)
+			# Position at the center of the propeller mesh geometry
+			propeller_blur_disc.position = mesh_center
+			# CylinderMesh stands upright (Y axis), rotate to face forward (Z axis)
+			propeller_blur_disc.rotation_degrees = Vector3(90, 0, 0)
+			print("Blur disc created with diameter: ", prop_diameter)
+	else:
+		print("WARNING: Propeller is not a MeshInstance3D!")
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -401,22 +455,48 @@ func animate_control_surfaces() -> void:
 		# Try rotating around local Y axis (vertical when wheel is upright)
 		front_wheel_node.rotate_object_local(Vector3.UP, deg_to_rad(wheel_angle))
 	
-	# Animate propeller based on throttle
+	# Animate propeller based on actual RPM from JSBSim
 	if propeller_node:
-		var throttle = jsb_node.get_input_throttle()  # 0 to 1
-		# Debug throttle value
-		# print("Throttle: ", throttle)
-		# Calculate RPM based on throttle (idle + throttle * range)
-		# Invert throttle if it's backwards
-		var rpm = PROPELLER_IDLE_RPM + (1.0 - throttle) * (PROPELLER_MAX_RPM - PROPELLER_IDLE_RPM)
+		# Get actual propeller RPM from JSBSim physics
+		var rpm = jsb_node.get_propeller_rpm()
+		
+		# Debug RPM every few seconds
+		if Engine.get_frames_drawn() % 120 == 0:
+			print("Propeller RPM: ", rpm, " blur_disc: ", propeller_blur_disc != null)
+		
 		# Convert RPM to degrees per second (RPM * 360 / 60 = RPM * 6)
 		var degrees_per_second = rpm * 6.0
+		
 		# Update rotation (get_process_delta_time for smooth animation)
 		propeller_rotation += degrees_per_second * get_process_delta_time()
+		
 		# Keep angle in 0-360 range
 		propeller_rotation = fmod(propeller_rotation, 360.0)
+		
 		# Apply rotation around Z axis (forward axis of aircraft)
 		propeller_node.rotation_degrees.z = propeller_rotation
+		
+		# Swap between real propeller blades and blur disc based on RPM
+		if propeller_blur_disc:
+			# Update shader RPM parameter if using shader material
+			if propeller_blur_material and propeller_blur_material is ShaderMaterial:
+				propeller_blur_material.set_shader_parameter("rpm", rpm)
+			
+			if rpm < PROPELLER_BLUR_START_RPM:
+				# Low RPM - show real blades, hide blur disc
+				propeller_node.visible = true
+				propeller_blur_disc.visible = false
+			elif rpm < PROPELLER_HIDE_BLADES_RPM:
+				# Transition zone - show both with blur disc fading in
+				propeller_node.visible = true
+				propeller_blur_disc.visible = true
+			else:
+				# High RPM - hide real blades, show only blur disc
+				propeller_node.visible = false
+				propeller_blur_disc.visible = true
+		else:
+			# No blur disc available - always show real propeller
+			propeller_node.visible = true
 	
 	# Animate ailerons - they move opposite to each other for roll control
 	var aileron_input = jsb_node.get_input_aileron()  # -1 to 1
