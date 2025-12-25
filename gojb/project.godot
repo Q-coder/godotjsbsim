@@ -20,6 +20,10 @@ config/icon="res://icon.svg"
 window/size/viewport_width=5500
 window/size/viewport_height=2500
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/terrain_3d/plugin.cfg")
+
 [input]
 
 flip_camera={

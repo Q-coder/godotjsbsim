@@ -25,6 +25,11 @@ namespace godot
         float input_throttle = 0.0;
         float input_aileron = 0.0f;  // Aileron input (-1.0 to 1.0)
         float input_elevator = 0.0f; // Elevator input (-1.0 to 1.0)
+        float elevator_trim = 0.0f;  // Elevator trim (-1.0 to 1.0)
+        float trigger_left_value = 0.0f;   // LT trigger value for throttle decrease
+        float trigger_right_value = 0.0f;  // RT trigger value for throttle increase
+        bool trim_up_held = false;   // Y button held for trim up
+        bool trim_down_held = false; // X button held for trim down
         double altitude_ft = 0.0;
         double heading_deg = 0.0;
         float flaps = 0.0f; // Flaps input (0.0 to 1.0)

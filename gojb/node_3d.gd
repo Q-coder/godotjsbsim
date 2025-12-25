@@ -57,7 +57,12 @@ var left_flap_node: Node3D
 var right_flap_node: Node3D
 var left_flap_base_transform: Transform3D
 var right_flap_base_transform: Transform3D
-const FLAP_MAX_ANGLE: float = 40.0  # Max flap deflection in degrees
+const FLAP_MAX_ANGLE: float = 30.0  # C172p max flap deflection (0, 10, 20, 30 degrees)
+
+# Front wheel (nose gear steering)
+var front_wheel_node: Node3D
+var front_wheel_base_transform: Transform3D
+const FRONT_WHEEL_MAX_ANGLE: float = 30.0  # Max steering angle
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -139,6 +144,15 @@ func _ready() -> void:
 		right_flap_base_transform = right_flap_node.transform
 	else:
 		print("WARNING: Right flap node not found!")
+	
+	# Get front wheel node for nose gear steering
+	# The VehicleWheel3D node is: Cessna_Exterior_Body_MAT_0_021_Body_Front
+	front_wheel_node = get_node_or_null("AC/Node3D2/C172P_1/Sketchfab_model/Cessna172_fbx/RootNode/75f3edaeef374a9f89e7b5ef606a0759_fbx/RootNode_001/Cessna-172/Cessna_Exterior/Cessna_Exterior_Body_MAT_0_021/Cessna_Exterior_Body_MAT_0_021_Body_Front")
+	if front_wheel_node:
+		print("Front wheel node found: ", front_wheel_node)
+		front_wheel_base_transform = front_wheel_node.transform
+	else:
+		print("WARNING: Front wheel node not found!")
 	
 	# Print the aircraft model hierarchy to find control surfaces
 	print("=== Aircraft Node Hierarchy ===")
@@ -367,14 +381,25 @@ func animate_control_surfaces() -> void:
 	if not jsb_node:
 		return
 	
-	# Animate rudder - simple rotation (pivot is wrong but keep it subtle)
+	# Animate rudder - rotate around LOCAL Y axis (hinge line as set in Blender)
 	if rudder_node:
 		var rudder_input = jsb_node.get_input_rudder()  # -1 to 1
 		var rudder_angle = -rudder_input * RUDDER_MAX_ANGLE
 		
-		# Simple rotation - not perfect but visible
+		# Reset to base transform first, then apply LOCAL rotation around Y axis
 		rudder_node.transform = rudder_base_transform
-		rudder_node.rotation_degrees.y = rudder_base_transform.basis.get_euler().y * (180.0/PI) + rudder_angle
+		rudder_node.rotate_object_local(Vector3.UP, deg_to_rad(rudder_angle))
+	
+	# Animate front wheel (nose gear steering) - opposite to rudder
+	if front_wheel_node:
+		var rudder_input = jsb_node.get_input_rudder()  # -1 to 1
+		# Opposite direction: positive rudder (right) = wheel turns left
+		var wheel_angle = rudder_input * FRONT_WHEEL_MAX_ANGLE
+		
+		# Reset to base transform first, then apply rotation
+		front_wheel_node.transform = front_wheel_base_transform
+		# Try rotating around local Y axis (vertical when wheel is upright)
+		front_wheel_node.rotate_object_local(Vector3.UP, deg_to_rad(wheel_angle))
 	
 	# Animate propeller based on throttle
 	if propeller_node:

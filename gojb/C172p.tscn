@@ -5,7 +5,10 @@
 [node name="Node3D" type="Node3D" unique_id=252633614]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.017105103, 0)
 
-[node name="C172P_1" parent="." unique_id=300236290 instance=ExtResource("1_fica4")]
+[node name="C172P_1" parent="." unique_id=415740866 instance=ExtResource("1_fica4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.010913372, -0.11403066, 0.30434108)
+
+[node name="Cessna_Exterior_Body_MAT_0_008_Rudder" parent="C172P_1/Sketchfab_model/Cessna172_fbx/RootNode/75f3edaeef374a9f89e7b5ef606a0759_fbx/RootNode_001/Cessna-172/Cessna_Exterior/Cessna_Exterior_Body_MAT_0_008" parent_id_path=PackedInt32Array(415740866, 2021718447) index="0" unique_id=1338989763]
+transform = Transform3D(0.99874634, 0.00032594585, -0.050052516, 0.021169357, 0.90338975, 0.42829922, 0.045356266, -0.4288218, 0.90225023, 0.996946, -108.948204, 507.332)
 
 [editable path="C172P_1"]

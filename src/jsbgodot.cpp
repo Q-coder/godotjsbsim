@@ -195,16 +195,37 @@ float JSBGodot::get_input_elevator() const
 
 void JSBGodot::increase_flaps()
 {
-    flaps = CLAMP(flaps + 0.25f, 0.0f, 1.0f);  // 0, 10, 20, 30, 40 degrees
+    // C172p has 4 flap positions: 0, 10, 20, 30 degrees
+    // Kinematic input: 0.0, 0.333, 0.667, 1.0
+    if (flaps < 0.1f) {
+        flaps = 0.333f;  // 10 degrees
+    } else if (flaps < 0.4f) {
+        flaps = 0.667f;  // 20 degrees
+    } else if (flaps < 0.7f) {
+        flaps = 1.0f;    // 30 degrees
+    }
+    // Already at max, do nothing
 }
 
 void JSBGodot::decrease_flaps()
 {
-    flaps = CLAMP(flaps - 0.25f, 0.0f, 1.0f);  // 0, 10, 20, 30, 40 degrees
+    // C172p has 4 flap positions: 0, 10, 20, 30 degrees
+    if (flaps > 0.9f) {
+        flaps = 0.667f;  // 20 degrees
+    } else if (flaps > 0.5f) {
+        flaps = 0.333f;  // 10 degrees
+    } else if (flaps > 0.1f) {
+        flaps = 0.0f;    // 0 degrees
+    }
+    // Already at min, do nothing
 }
 
 float JSBGodot::get_flaps() const
 {
+    // Return actual flap position from JSBSim (not command) for visual animation
+    if (FDMExec) {
+        return FDMExec->GetPropertyValue("fcs/flap-pos-norm");
+    }
     return flaps;
 }
 
@@ -340,33 +361,40 @@ void JSBGodot::_input(const Ref<InputEvent> event)
         {
             set_input_elevator(-value); // Up = positive, Down = negative
         }
-        // Right stick: Rudder (horizontal) and Throttle (vertical)
+        // Right stick: Rudder (horizontal only)
         else if (axis == JOY_AXIS_RIGHT_X)
         {
             set_input_rudder(value);
         }
-        else if (axis == JOY_AXIS_RIGHT_Y)
+        // Triggers for throttle control - store values for continuous processing
+        else if (axis == JOY_AXIS_TRIGGER_RIGHT) // RT - Increase throttle
         {
-            // Convert -1 to 1 range to 0 to 1 for throttle
-            set_input_throttle((1.0f - value) / 2.0f);
+            trigger_right_value = value;
         }
-        // Triggers for brake/throttle alternative
-        else if (axis == JOY_AXIS_TRIGGER_RIGHT) // RT - Throttle
+        else if (axis == JOY_AXIS_TRIGGER_LEFT) // LT - Decrease throttle  
         {
-            set_input_throttle(value); // 0 to 1
-        }
-        else if (axis == JOY_AXIS_TRIGGER_LEFT) // LT - Brake
-        {
-            set_input_brake(value); // 0 to 1
+            trigger_left_value = value;
         }
     }
     else if (event->is_class("InputEventJoypadButton"))
     {
         Ref<InputEventJoypadButton> button_event = event;
-        if (button_event->is_pressed())
+        int button = button_event->get_button_index();
+        bool pressed = button_event->is_pressed();
+        
+        // Track trim button held states
+        if (button == JOY_BUTTON_Y) // Y button - Trim nose up
         {
-            int button = button_event->get_button_index();
-            
+            trim_up_held = pressed;
+        }
+        else if (button == JOY_BUTTON_X) // X button - Trim nose down
+        {
+            trim_down_held = pressed;
+        }
+        
+        // Handle button press events (single action)
+        if (pressed)
+        {
             if (button == JOY_BUTTON_A) // A button
             {
                 increase_flaps();
@@ -409,6 +437,24 @@ void JSBGodot::_physics_process(const real_t delta)
     //    Your physics logic
     if (!Engine::get_singleton()->is_editor_hint())
     {
+        // Apply continuous throttle from triggers
+        if (trigger_right_value > 0.1f) {
+            set_input_throttle(input_throttle + trigger_right_value * 0.005f);
+        }
+        if (trigger_left_value > 0.1f) {
+            set_input_throttle(input_throttle - trigger_left_value * 0.005f);
+        }
+        
+        // Apply continuous trim from held buttons
+        if (trim_up_held) {
+            elevator_trim += 0.001f;
+            if (elevator_trim > 1.0f) elevator_trim = 1.0f;
+        }
+        if (trim_down_held) {
+            elevator_trim -= 0.001f;
+            if (elevator_trim < -1.0f) elevator_trim = -1.0f;
+        }
+        
         copy_inputs_to_JSBSim();
         FDMExec->Run();
         copy_outputs_from_JSBSim();
@@ -522,9 +568,12 @@ void JSBGodot::copy_inputs_to_JSBSim()
 
     // Set control surface deflections via the property tree
     FDMExec->SetPropertyValue("fcs/aileron-cmd-norm", input_aileron);
-    FDMExec->SetPropertyValue("fcs/elevator-cmd-norm", input_elevator);
+    FDMExec->SetPropertyValue("fcs/elevator-cmd-norm", input_elevator + elevator_trim);
     FDMExec->SetPropertyValue("fcs/rudder-cmd-norm", input_rudder);
     FDMExec->SetPropertyValue("fcs/throttle-cmd-norm", input_throttle);
+
+    // Set nose wheel steering (linked to rudder, but opposite direction for ground steering)
+    FDMExec->SetPropertyValue("fcs/steer-cmd-norm", -input_rudder);
 
     // Set the brake command
     FDMExec->SetPropertyValue("fcs/left-brake-cmd-norm", input_brake);
@@ -532,9 +581,6 @@ void JSBGodot::copy_inputs_to_JSBSim()
 
     // Set flaps command
     FDMExec->SetPropertyValue("fcs/flap-cmd-norm", flaps);
-
-    printf("Control inputs applied: Aileron=%f, Elevator=%f, Rudder=%f, Throttle=%f, Flaps=%f\n",
-           input_aileron, input_elevator, input_rudder, input_throttle, flaps);
 }
 
 Vector3 lat_lon_alt_to_cartesian(float latitude, float longitude, float altitude)
@@ -628,9 +674,6 @@ void JSBGodot::copy_outputs_from_JSBSim()
     // Update the position and rotation of the parent node
     parent_node->set_position(local_position);
     parent_node->set_rotation(newRot);
-
-    printf("Updated parent (AC) position to x: %f, y: %f, z: %f\n",
-           local_position.x, local_position.y, local_position.z);
 
     // Access airspeed from the property tree
     double tas_knots = FDMExec->GetPropertyValue("aero/qbar-psf");

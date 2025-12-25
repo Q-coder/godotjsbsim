@@ -1,30 +1,96 @@
-[gd_scene load_steps=7 format=3 uid="uid://d4gjglrwmtar4"]
+[gd_scene load_steps=17 format=3 uid="uid://d4gjglrwmtar4"]
 
 [ext_resource type="Script" uid="uid://seeaclvwcq0r" path="res://node_3d.gd" id="1_1r08c"]
-[ext_resource type="PackedScene" uid="uid://donvtr02hvkxe" path="res://ground.tscn" id="1_6r2e6"]
 [ext_resource type="PackedScene" uid="uid://dxgh4imubsngc" path="res://ac.tscn" id="2_yxcfd"]
 [ext_resource type="PackedScene" uid="uid://dssmgx0csel6d" path="res://runway.tscn" id="4_w0gyf"]
 [ext_resource type="PackedScene" uid="uid://xq3lvbf0alcb" path="res://house_1.tscn" id="5_hatek"]
+[ext_resource type="PackedScene" uid="uid://c8env1r0nment" path="res://environment.tscn" id="6_envir"]
+[ext_resource type="Texture2D" uid="uid://cditync2r7ipo" path="res://Textures/coast_sand_rocks_02_diff_4k.png" id="6_i5arm"]
+[ext_resource type="Texture2D" uid="uid://tgqmh32fcwbu" path="res://Textures/coast_sand_rocks_02_rough_4k.png" id="7_wc5p8"]
+[ext_resource type="PackedScene" uid="uid://dklme3dr7kr6q" path="res://Assets/schmerlat/SH_Hangar.glb" id="8_jsk3o"]
 
-[sub_resource type="Environment" id="Environment_aeqfu"]
-background_color = Color(0, 0, 0.898039, 1)
-background_energy_multiplier = 3.06
-ambient_light_color = Color(0, 0, 0.956863, 1)
+[sub_resource type="Gradient" id="Gradient_wc5p8"]
+offsets = PackedFloat32Array(0.2, 1)
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
 
-[node name="Node3D" type="Node3D" unique_id=1069261226]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_jsk3o"]
+noise_type = 2
+frequency = 0.03
+cellular_jitter = 3.0
+cellular_return_type = 0
+domain_warp_enabled = true
+domain_warp_type = 1
+domain_warp_amplitude = 50.0
+domain_warp_fractal_type = 2
+domain_warp_fractal_lacunarity = 1.5
+domain_warp_fractal_gain = 1.0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_4arys"]
+noise = SubResource("FastNoiseLite_jsk3o")
+color_ramp = SubResource("Gradient_wc5p8")
+seamless = true
+
+[sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_6iypd"]
+_shader_parameters = {
+&"bias_distance": 512.0,
+&"blend_sharpness": 0.5,
+&"depth_blur": 0.0,
+&"dual_scale_far": 170.0,
+&"dual_scale_near": 100.0,
+&"dual_scale_reduction": 0.3,
+&"dual_scale_texture": 0,
+&"enable_macro_variation": true,
+&"enable_projection": true,
+&"flat_terrain_normals": false,
+&"macro_variation1": Color(1, 1, 1, 1),
+&"macro_variation2": Color(1, 1, 1, 1),
+&"macro_variation_slope": 0.333,
+&"mipmap_bias": 1.0,
+&"noise1_angle": 0.0,
+&"noise1_offset": Vector2(0.5, 0.5),
+&"noise1_scale": 0.0400000019,
+&"noise2_scale": 0.076,
+&"noise_texture": SubResource("NoiseTexture2D_4arys"),
+&"projection_threshold": 0.8,
+&"tri_scale_reduction": 0.3
+}
+dual_scaling = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tereu"]
+transparency = 4
+cull_mode = 2
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("6_i5arm")
+backlight_enabled = true
+backlight = Color(0.5, 0.5, 0.5, 1)
+distance_fade_mode = 1
+distance_fade_min_distance = 128.0
+distance_fade_max_distance = 96.0
+
+[sub_resource type="Terrain3DMeshAsset" id="Terrain3DMeshAsset_cdqbm"]
+generated_type = 1
+height_offset = 0.5
+material_override = SubResource("StandardMaterial3D_tereu")
+last_lod = 0
+last_shadow_lod = 0
+lod0_range = 128.0
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_wc5p8"]
+name = "coast_sand_rocks_02_diff_4k"
+albedo_texture = ExtResource("6_i5arm")
+normal_texture = ExtResource("7_wc5p8")
+
+[sub_resource type="Terrain3DAssets" id="Terrain3DAssets_tcnuu"]
+mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_cdqbm")])
+texture_list = Array[Terrain3DTextureAsset]([SubResource("Terrain3DTextureAsset_wc5p8")])
+
+[node name="Node3D2" type="Node3D" unique_id=1069261226]
 script = ExtResource("1_1r08c")
 
 [node name="AC" parent="." unique_id=754408209 instance=ExtResource("2_yxcfd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.999999, -0.13541573, 1.3129692, -0.24543622)
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1885403404]
-environment = SubResource("Environment_aeqfu")
-
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=391543478]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.94035, 4.38032, 3.73175)
-
-[node name="Ground2" parent="." unique_id=452216516 instance=ExtResource("1_6r2e6")]
-transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, -462.008, -1.010026, 527.369)
+[node name="Environment" parent="." unique_id=1222445889 instance=ExtResource("6_envir")]
 
 [node name="Control" type="Control" parent="." unique_id=1312208183]
 layout_mode = 3
@@ -86,17 +152,8 @@ scale = Vector2(5, 5)
 text = "Text 5
 "
 
-[node name="Ground" parent="." unique_id=684589210 instance=ExtResource("1_6r2e6")]
-transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, -461.269, -6.96362, -2672.6)
-
-[node name="Ground3" parent="." unique_id=1111672225 instance=ExtResource("1_6r2e6")]
-transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, 2736.84, -6.96362, 524.052)
-
-[node name="Ground4" parent="." unique_id=1320387918 instance=ExtResource("1_6r2e6")]
-transform = Transform3D(400.496, 0, 0, 0, 1.00124, 0, 0, 0, 400.496, 2738.05, -6.96362, -2649.3)
-
 [node name="Runway" parent="." unique_id=1224639926 instance=ExtResource("4_w0gyf")]
-transform = Transform3D(-1.84465e-07, 0, 4.36856, 0, 1, 0, -4.22006, 0, -1.90956e-07, 0.52774, -0.512528, 251.932)
+transform = Transform3D(-2.0202678e-07, 0, 4.36856, 0, 1.0176336, 0, -4.6218257, 0, -1.90956e-07, 2.409881, 0.05941534, 303.30914)
 
 [node name="House1" parent="." unique_id=1166139611 instance=ExtResource("5_hatek")]
 transform = Transform3D(0.00219913, 0, -0.999998, 0, 1, 0, 0.999998, 0, 0.00219913, 302.79245, 7.35746, -79.6619)
@@ -109,3 +166,13 @@ transform = Transform3D(-0.0138051, 0, -0.999905, 0, 1, 0, 0.999905, 0, -0.01380
 
 [node name="House6" parent="." unique_id=1529045327 instance=ExtResource("5_hatek")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2157.93, -3.32863, -3459.35)
+
+[node name="Terrain3D" type="Terrain3D" parent="." unique_id=2104631735]
+data_directory = "res://Terra3DData"
+material = SubResource("Terrain3DMaterial_6iypd")
+assets = SubResource("Terrain3DAssets_tcnuu")
+top_level = true
+metadata/_edit_lock_ = true
+
+[node name="SH_Hangar" parent="." unique_id=1908893876 instance=ExtResource("8_jsk3o")]
+transform = Transform3D(-0.009494454, 0, -0.99995494, 0, 1, 0, 0.99995494, 0, -0.009494454, 153.66931, -9.595768, 324.67627)
