@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://seeaclvwcq0r" path="res://node_3d.gd" id="1_1r08c"]
 [ext_resource type="PackedScene" uid="uid://dxgh4imubsngc" path="res://ac.tscn" id="2_yxcfd"]
 [ext_resource type="PackedScene" uid="uid://c8env1r0nment" path="res://environment.tscn" id="6_envir"]
+[ext_resource type="Script" uid="uid://building_loader_gd_uid" path="res://building_loader.gd" id="7_bldng"]
 [ext_resource type="Texture2D" uid="uid://cditync2r7ipo" path="res://Textures/coast_sand_rocks_02_diff_4k.png" id="6_i5arm"]
 [ext_resource type="Texture2D" uid="uid://tgqmh32fcwbu" path="res://Textures/coast_sand_rocks_02_rough_4k.png" id="7_wc5p8"]
 
@@ -157,3 +158,9 @@ material = SubResource("Terrain3DMaterial_6iypd")
 assets = SubResource("Terrain3DAssets_tcnuu")
 top_level = true
 metadata/_edit_lock_ = true
+
+[node name="BuildingLoader" type="Node3D" parent="."]
+script = ExtResource("7_bldng")
+load_distance = 8000.0
+unload_distance = 12000.0
+debug_mode = true
