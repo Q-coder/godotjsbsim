@@ -18,6 +18,7 @@ We use Swiss high-resolution terrain data (swissALTI3D) in R16 format:
 - **File**: `zurich_airport_hires.r16`
 - **Resolution**: 0.5m per pixel
 - **Format**: 16-bit unsigned integer heightmap
+- **Elevation**: Real ASL (Above Sea Level) values (~424m at Zurich Airport)
 
 ### 2. Import Settings in Terrain3D
 
@@ -28,24 +29,18 @@ We use Swiss high-resolution terrain data (swissALTI3D) in R16 format:
 | Setting | Value | Notes |
 |---------|-------|-------|
 | **File** | `zurich_airport_hires.r16` | Your heightmap file |
-| **Height Offset** | `0` | Import with no offset for simplest setup |
+| **Height Offset** | `0` | Import with no offset - Godot Y = real ASL |
 | **Height Scale** | `1.0` | Use real-world heights |
 | **Import Position** | `(0, 0)` | Center of terrain |
 
 4. Click **Import**
 
-### 3. Understanding Height Offset
+### 3. Understanding the Coordinate System
 
-The **Height Offset** during import shifts all terrain vertices vertically:
-
-| Import Offset | Godot Terrain Y | JSBSim Offset Needed | Use Case |
-|---------------|-----------------|----------------------|----------|
-| **0** | Real ASL elevation | `0` | Simplest - recommended |
-| **-480** | Near Y=0 | `480` | If Terrain3D has world bounds issues |
-
-**Current Setup**: Import offset = 0, JSBSim offset = 0
-
-This means Godot terrain Y coordinates directly equal real-world ASL (Above Sea Level) elevation in meters.
+With **Height Offset = 0**:
+- Godot terrain Y coordinates = real-world ASL elevation in meters
+- JSBSim altitude (meters) = Godot Y position directly
+- No complex offset calculations needed
 
 ## Collision Detection Architecture
 
@@ -63,18 +58,17 @@ This means Godot terrain Y coordinates directly equal real-world ASL (Above Sea 
 │     terrain_height = terrain_data.get_height(ac_position)       │
 │                           │                                      │
 │                           ▼                                      │
-│  3. Convert to JSBSim ASL elevation                             │
-│     jsbsim_elevation = terrain_height + jsbsim_elevation_offset │
+│  3. Update JSBSim terrain elevation (direct, no offset)         │
+│     set_terrain_elevation(terrain_height)                       │
 │                           │                                      │
 │                           ▼                                      │
-│  4. Update JSBSim terrain property                              │
-│     set_terrain_elevation(jsbsim_elevation)                     │
-│                           │                                      │
-│                           ▼                                      │
-│  5. JSBSim runs physics with correct ground height              │
+│  4. JSBSim runs physics with correct ground height              │
 │     - Ground reaction forces                                     │
 │     - Gear compression                                           │
 │     - Altimeter reading                                          │
+│                                                                  │
+│  5. JSBSim outputs altitude → Godot Y position                  │
+│     Godot Y = altitude_m + WHEEL_GROUND_CLEARANCE               │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -84,18 +78,19 @@ This means Godot terrain Y coordinates directly equal real-world ASL (Above Sea 
 #### GDScript (node_3d.gd)
 
 ```gdscript
-# Offset to convert Godot Y to JSBSim ASL elevation
-var jsbsim_elevation_offset: float = 0.0
+# Wheel clearance to prevent visual clipping
+const WHEEL_GROUND_CLEARANCE: float = 0.5  # meters
+
+func _do_deferred_terrain_init() -> void:
+    # Set the wheel clearance offset for visual positioning
+    jsb_node.set_godot_terrain_y_offset(WHEEL_GROUND_CLEARANCE)
 
 func _update_terrain_elevation() -> void:
-    # Get terrain height at aircraft position
-    var terrain_height_godot = terrain_data.get_height(ac_position)
+    # Get terrain height at aircraft position (already in ASL meters)
+    var terrain_height = terrain_data.get_height(ac_position)
     
-    # Convert to JSBSim ASL
-    var terrain_elevation_jsbsim = terrain_height_godot + jsbsim_elevation_offset
-    
-    # Update JSBSim
-    jsb_node.set_terrain_elevation(terrain_elevation_jsbsim)
+    # Send directly to JSBSim - no offset needed
+    jsb_node.set_terrain_elevation(terrain_height)
 ```
 
 #### C++ (jsbgodot.cpp)
@@ -105,59 +100,82 @@ void JSBGodot::set_terrain_elevation(double elevation_m) {
     double elevation_ft = elevation_m * 3.28084;
     FDMExec->SetPropertyValue("position/terrain-elevation-asl-ft", elevation_ft);
 }
-```
 
-### Coordinate Transformation
-
-JSBSim outputs aircraft position relative to its initial reference point. To display the aircraft at the correct Godot world position:
-
-```cpp
 // In copy_outputs_from_JSBSim()
-Vector3 local_position = lat_lon_alt_to_local(latitude, longitude, altitude_m);
-local_position.y += godot_terrain_y_offset;  // Transform to Godot world
-parent_node->set_position(local_position);
+// Godot Y = JSBSim altitude (meters) + wheel clearance offset
+local_position.y = altitude_m + godot_terrain_y_offset;
 ```
 
-The `godot_terrain_y_offset` is set at initialization to the terrain height at the starting position.
+### Coordinate Systems
+
+#### Swiss LV95 to Godot World
+
+The terrain is centered at Swiss LV95 coordinates, converted to Godot:
+- **Terrain Center E**: 2686872.0 (Easting at Godot X=0)
+- **Terrain Center N**: 1257719.0 (Northing at Godot Z=0)
+
+Conversion formulas:
+```
+Godot X = TERRAIN_CENTER_E - Swiss_E  (+X = West)
+Godot Z = Swiss_N - TERRAIN_CENTER_N  (+Z = North)
+```
+
+#### Godot to WGS84 (Lat/Lon)
+
+The HUD displays real-world coordinates by:
+1. Converting Godot position back to Swiss LV95
+2. Using swisstopo approximate formulas to convert LV95 → WGS84
+
+```gdscript
+func lv95_to_wgs84(easting: float, northing: float) -> Vector2:
+    # Returns Vector2(latitude, longitude) in degrees
+```
 
 ## Configuration Variables
 
 ### In node_3d.gd
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `jsbsim_elevation_offset` | `0.0` | Added to Godot Y to get JSBSim ASL |
-| `WHEEL_GROUND_CLEARANCE` | `0.6` | Meters to lift aircraft to prevent wheel clipping |
-| `TERRAIN_INIT_DELAY_FRAMES` | `60` | Frames to wait before per-frame terrain updates |
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `WHEEL_GROUND_CLEARANCE` | `0.5` | Meters to lift visual model to prevent wheel clipping |
+| `TERRAIN_CENTER_E` | `2686872.0` | Swiss Easting at Godot X=0 |
+| `TERRAIN_CENTER_N` | `1257719.0` | Swiss Northing at Godot Z=0 |
 
 ### In JSBGodot C++
 
 | Variable | Purpose |
 |----------|---------|
-| `godot_terrain_y_offset` | Shifts JSBSim output Y to Godot world coordinates |
+| `godot_terrain_y_offset` | Small offset (e.g., 0.5m) to lift visual model above ground |
+
+## HUD Display
+
+The simulator displays:
+- **Godot coordinates**: X, Y, Z in world space
+- **Lat/Lon**: Real-world WGS84 coordinates calculated from position
+- **Altitude**: JSBSim altitude in feet ASL
 
 ## Troubleshooting
 
 ### Aircraft falls through terrain
-- Check that `_update_terrain_elevation()` is being called (not disabled)
-- Verify Terrain3D collision mode is set to "Dynamic" or "Game"
+- Check that `_update_terrain_elevation()` is being called
+- Verify Terrain3D collision mode is set to "Full"
 - Check terrain data is loaded (`region_count > 0`)
 
-### Altimeter shows wrong altitude
-- Verify `jsbsim_elevation_offset` matches your import offset
-- With import offset 0: JSBSim offset should be 0
-- With import offset -480: JSBSim offset should be 480
-
 ### Wheels clip through ground
-- Increase `WHEEL_GROUND_CLEARANCE` (default 0.6m)
+- Increase `WHEEL_GROUND_CLEARANCE` in node_3d.gd (default 0.5m)
 
-### Terrain too high/low in Godot world
-- Adjust import height offset in Terrain3D import settings
-- Remember to update `jsbsim_elevation_offset` to match
+### Lat/Lon display incorrect
+- Verify `TERRAIN_CENTER_E` and `TERRAIN_CENTER_N` match your terrain import
+- These should be the Swiss LV95 coordinates at Godot position (0, 0)
+
+### Buildings floating or underground
+- Adjust `building_offset` on the BuildingLoader node
+- Buildings use the same coordinate system as terrain
 
 ## File Locations
 
 - **Terrain data**: `gojb/Terra3DData/` (Terrain3D .res files)
 - **Heightmap source**: `gojb/zurich_airport_hires.r16`
 - **Main script**: `gojb/node_3d.gd`
+- **Building loader**: `gojb/building_loader.gd`
 - **JSBSim binding**: `src/jsbgodot.cpp`, `src/jsbgodot.h`
