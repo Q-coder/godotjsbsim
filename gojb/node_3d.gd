@@ -81,6 +81,19 @@ func _ready() -> void:
 	# Access the AC node and its cameras
 	var ac_node = $AC
 	print("AC node: ", ac_node)
+	
+	# DEBUG: Check transforms of intermediate nodes for Y offsets
+	print("=== AIRCRAFT HIERARCHY TRANSFORMS ===")
+	print("  AC.position: ", ac_node.position)
+	var node3d2 = ac_node.get_node_or_null("Node3D2")
+	if node3d2:
+		print("  Node3D2.position: ", node3d2.position)
+		print("  Node3D2.global_position: ", node3d2.global_position)
+	var c172p = ac_node.get_node_or_null("Node3D2/C172P_1")
+	if c172p:
+		print("  C172P_1.position: ", c172p.position)
+		print("  C172P_1.global_position: ", c172p.global_position)
+	
 	camera1 = ac_node.get_node("Camera1")
 	camera2 = ac_node.get_node("Camera2")
 	active_camera = camera1
@@ -168,10 +181,37 @@ func _ready() -> void:
 	if terrain3d_node:
 		print("Terrain3D node found: ", terrain3d_node)
 		print("Terrain3D class: ", terrain3d_node.get_class())
+		
+		# DEBUG: Print Terrain3D properties
+		print("=== TERRAIN3D PROPERTIES DEBUG ===")
+		print("  collision_layer: ", terrain3d_node.get("collision_layer"))
+		print("  collision_mask: ", terrain3d_node.get("collision_mask"))
+		print("  render_layers: ", terrain3d_node.get("render_layers"))
+		print("  global_position: ", terrain3d_node.global_position)
+		
+		# Check collision object
+		var collision = terrain3d_node.get("collision")
+		if collision:
+			print("=== TERRAIN3D COLLISION DEBUG ===")
+			print("  collision object: ", collision)
+			print("  collision class: ", collision.get_class() if collision.has_method("get_class") else "unknown")
+		else:
+			print("  collision object: null (collision may not be set up)")
+		
 		var tdata = terrain3d_node.get("data")
 		if tdata:
 			print("Terrain3D data: ", tdata)
 			print("Terrain3D data class: ", tdata.get_class())
+			
+			# DEBUG: Print Terrain3DData properties and region info
+			print("=== TERRAIN3D DATA PROPERTIES ===")
+			# Try to get region count
+			if tdata.has_method("get_region_count"):
+				print("  region_count: ", tdata.get_region_count())
+			# Try to list regions
+			if tdata.has_method("get_regions_active"):
+				print("  active_regions: ", tdata.get_regions_active())
+			
 			# Initialize JSBSim with correct terrain elevation
 			_initialize_jsbsim_on_terrain(tdata)
 		else:
@@ -266,40 +306,83 @@ func _do_deferred_terrain_init() -> void:
 	ac_node.global_position.x = 0.0
 	ac_node.global_position.z = 0.0
 	
+	# DEBUG: Check terrain heights at multiple points
+	print("=== TERRAIN HEIGHT DEBUG ===")
+	for test_pos in [Vector3(0, 0, 0), Vector3(100, 0, 100), Vector3(-100, 0, -100), Vector3(500, 0, 500)]:
+		var h = terrain_data.get_height(test_pos)
+		print("  get_height(", test_pos.x, ", ", test_pos.z, ") = ", h, "m = ", h * 3.28084, " ft")
+	
 	# Get terrain height from API
 	var api_height = terrain_data.get_height(Vector3(0, 0, 0))
 	print("=== Terrain3D API get_height(0,0,0) = ", api_height, "m ===")
 	
-	# Use physics raycast to find actual visual terrain mesh height
-	var space_state = get_world_3d().direct_space_state
-	var ray_origin = Vector3(0, 2000, 0)  # Start high above
-	var ray_end = Vector3(0, -500, 0)     # Go below expected terrain
-	var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
-	query.collide_with_areas = false
-	query.collide_with_bodies = true
+	# Try Terrain3D's get_intersection() method (raymarching, no physics needed)
+	var visual_terrain_height: float = api_height
+	var terrain3d = terrain3d_node  # The actual Terrain3D node
 	
-	var result = space_state.intersect_ray(query)
-	var visual_terrain_height: float
-	
-	if result:
-		visual_terrain_height = result.position.y
-		print("=== Raycast hit terrain at Y: ", visual_terrain_height, "m ===")
-		print("=== Difference from API: ", visual_terrain_height - api_height, "m ===")
+	if terrain3d and terrain3d.has_method("get_intersection"):
+		var ray_origin = Vector3(0, 2000, 0)
+		var ray_dir = Vector3(0, -1, 0)  # Straight down
+		var intersection = terrain3d.get_intersection(ray_origin, ray_dir)
+		if intersection != Vector3.INF and not is_nan(intersection.y):
+			visual_terrain_height = intersection.y
+			print("=== Terrain3D get_intersection hit at Y: ", visual_terrain_height, "m ===")
+		else:
+			print("=== Terrain3D get_intersection returned no hit ===")
 	else:
-		# Fallback: use get_height 
-		visual_terrain_height = api_height
-		print("=== Raycast FAILED - terrain has no collision shape! Using API height: ", visual_terrain_height, "m ===")
+		print("=== Terrain3D get_intersection not available ===")
 	
-	# Position aircraft on the terrain
+	# Fallback to physics raycast
+	if visual_terrain_height == api_height:
+		var space_state = get_world_3d().direct_space_state
+		var ray_origin = Vector3(0, 2000, 0)  # Start high above
+		var ray_end = Vector3(0, -500, 0)     # Go below expected terrain
+		var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
+		query.collide_with_areas = false
+		query.collide_with_bodies = true
+		
+		var result = space_state.intersect_ray(query)
+		
+		if result:
+			visual_terrain_height = result.position.y
+			print("=== Physics raycast hit at Y: ", visual_terrain_height, "m ===")
+		else:
+			print("=== Physics raycast FAILED - using API height: ", visual_terrain_height, "m ===")
+	
+	# WORKAROUND: Previously we had issues with terrain visual mesh offset
+	# Now handled by godot_terrain_y_offset in JSBGodot C++ code
+	# The collision/API height is the correct reference point
+	
+	# Position aircraft on the visual terrain (Godot Y coordinate)
+	# Note: JSBSim will take over position control after initialization
 	var gear_height = 1.5
 	var new_y = visual_terrain_height + gear_height
 	
-	print("=== Positioning aircraft at Y: ", new_y, "m (terrain: ", visual_terrain_height, "m) ===")
+	print("=== Initial aircraft position at Godot Y: ", new_y, "m (terrain: ", visual_terrain_height, "m) ===")
 	
 	ac_node.global_position.y = new_y
 	
-	# Initialize JSBSim with the terrain height for ground collision
-	jsb_node.initialize_at_terrain(visual_terrain_height)
+	# For JSBSim, we need the REAL terrain elevation (for altimeter, physics, etc.)
+	# The offset converts Godot Y to JSBSim ASL elevation
+	# For terrain imported with offset 0: Godot Y already equals real ASL elevation
+	jsbsim_elevation_offset = 0.0  # No offset needed when terrain imported with offset 0
+	var jsbsim_terrain_elevation = api_height + jsbsim_elevation_offset
+	print("=== JSBSim terrain elevation: ", jsbsim_terrain_elevation, "m (", jsbsim_terrain_elevation * 3.28084, " ft) ===")
+	print("=== JSBSim elevation offset: ", jsbsim_elevation_offset, "m (Godot Y + offset = JSBSim ASL) ===")
+	
+	# Calculate the Y offset to transform JSBSim world coordinates to Godot world coordinates
+	# JSBSim outputs position relative to its INITIAL position (d_alt = altitude - ref_alt)
+	# When on ground at ref_alt, JSBSim Y = 0
+	# We need to shift that to Godot's terrain Y position
+	# Small additional offset (0.3m) to keep wheels slightly above ground
+	const WHEEL_GROUND_CLEARANCE: float = 0.6  # Meters to lift aircraft to prevent wheels clipping
+	var godot_terrain_y_offset = visual_terrain_height + WHEEL_GROUND_CLEARANCE
+	print("=== Setting godot_terrain_y_offset: ", godot_terrain_y_offset, "m ===")
+	print("    (Godot terrain Y: ", visual_terrain_height, "m + ", WHEEL_GROUND_CLEARANCE, "m clearance)")
+	jsb_node.set_godot_terrain_y_offset(godot_terrain_y_offset)
+	
+	# Initialize JSBSim with the REAL terrain height for ground collision & altimeter
+	jsb_node.initialize_at_terrain(jsbsim_terrain_elevation)
 	
 	terrain_initialized = true
 	print("=== JSBSim terrain initialization complete ===")
@@ -346,12 +429,10 @@ var terrain_debug_printed: bool = false
 var terrain_initialized: bool = false
 var terrain_init_frame_count: int = 0
 const TERRAIN_INIT_DELAY_FRAMES: int = 60  # Wait 60 frames (~1 sec) before per-frame updates
+# Offset to convert Godot Y coordinates to JSBSim ASL elevation
+# Set during initialization, used for per-frame terrain updates
+var jsbsim_elevation_offset: float = 0.0  # 0 when terrain imported with offset 0
 func _update_terrain_elevation() -> void:
-	# DISABLED: Per-frame terrain updates cause physics instability
-	# The terrain is set once during initialization in _initialize_jsbsim_on_terrain()
-	# TODO: Investigate why per-frame updates cause JSBSim to crash
-	return
-	
 	# Skip if not yet initialized (initialization happens in _ready via _initialize_jsbsim_on_terrain)
 	if not terrain_initialized:
 		return
@@ -385,14 +466,18 @@ func _update_terrain_elevation() -> void:
 			terrain_debug_printed = true
 		return
 	
-	var terrain_height = terrain_data.get_height(ac_position)
+	var terrain_height_godot = terrain_data.get_height(ac_position)
 	
 	# Check for NAN (position outside defined regions)
-	if is_nan(terrain_height):
-		terrain_height = 0.0  # Default to sea level if outside terrain
+	if is_nan(terrain_height_godot):
+		terrain_height_godot = 0.0  # Default to sea level if outside terrain
+	
+	# Convert Godot Y coordinate to JSBSim ASL elevation
+	# JSBSim expects real-world ASL, so we add the offset
+	var terrain_elevation_jsbsim = terrain_height_godot + jsbsim_elevation_offset
 	
 	# Set terrain elevation in JSBSim (in meters - the method converts to feet)
-	jsb_node.set_terrain_elevation(terrain_height)
+	jsb_node.set_terrain_elevation(terrain_elevation_jsbsim)
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.

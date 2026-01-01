@@ -44,6 +44,8 @@ void JSBGodot::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_terrain_elevation", "elevation_m"), &JSBGodot::set_terrain_elevation);
     ClassDB::bind_method(D_METHOD("initialize_at_terrain", "terrain_elevation_m"), &JSBGodot::initialize_at_terrain);
     ClassDB::bind_method(D_METHOD("is_initialized"), &JSBGodot::is_initialized);
+    ClassDB::bind_method(D_METHOD("set_godot_terrain_y_offset", "offset_m"), &JSBGodot::set_godot_terrain_y_offset);
+    ClassDB::bind_method(D_METHOD("get_godot_terrain_y_offset"), &JSBGodot::get_godot_terrain_y_offset);
 
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_pitch"), "set_input_pitch", "get_input_pitch");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_roll"), "set_input_roll", "get_input_roll");
@@ -317,6 +319,17 @@ void JSBGodot::initialize_at_terrain(double terrain_elevation_m)
 bool JSBGodot::is_initialized() const
 {
     return jsbsim_initialized;
+}
+
+void JSBGodot::set_godot_terrain_y_offset(double offset_m)
+{
+    godot_terrain_y_offset = offset_m;
+    printf("JSBGodot: Godot terrain Y offset set to %f m\n", offset_m);
+}
+
+double JSBGodot::get_godot_terrain_y_offset() const
+{
+    return godot_terrain_y_offset;
 }
 
 void JSBGodot::set_input_brake(float value)
@@ -738,6 +751,10 @@ void JSBGodot::copy_outputs_from_JSBSim()
 
     // Get local position in meters
     Vector3 local_position = lat_lon_alt_to_local(latitude, longitude, altitude_m);
+    
+    // Apply Godot terrain Y offset to transform JSBSim world to Godot world
+    // JSBSim altitude is real-world ASL, but Godot terrain may be at different Y
+    local_position.y += godot_terrain_y_offset;
 
     // Get Euler angles (in radians) from JSBSim
     double bank = Propagate->GetEuler(1);    // Roll

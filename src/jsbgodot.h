@@ -96,6 +96,11 @@ namespace godot
         // This must be called before the first physics step for proper ground collision
         void initialize_at_terrain(double terrain_elevation_m);
         
+        // Set Godot world Y offset for terrain (transforms JSBSim altitude to Godot Y)
+        // godot_y = jsbsim_altitude - terrain_elevation + godot_terrain_y
+        void set_godot_terrain_y_offset(double offset_m);
+        double get_godot_terrain_y_offset() const;
+        
         // Check if JSBSim is fully initialized and ready
         bool is_initialized() const;
         
@@ -103,6 +108,7 @@ namespace godot
         bool jsbsim_initialized = false;  // Track if JSBSim has been properly initialized
         double pending_terrain_elevation = 0.0;  // Terrain elevation to use at initialization
         bool has_pending_terrain = false;  // Whether we have a terrain elevation to set
+        double godot_terrain_y_offset = 0.0;  // Y offset to apply (Godot terrain Y - JSBSim terrain elevation)
     };
 
 }
