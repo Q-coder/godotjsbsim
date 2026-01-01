@@ -28,7 +28,7 @@ env.Append(LIBS=[jsb_library])
 
 src = Glob("src/*.cpp")
 
-libpath = 'libgojb{}{}'.format( env['suffix'], env['SHLIBSUFFIX'] )
+libpath = 'gojb/bin/libgojb{}{}'.format( env['suffix'], env['SHLIBSUFFIX'] )
 sharedlib = env.SharedLibrary(libpath,src)
 Default(sharedlib)
 

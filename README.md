@@ -78,12 +78,7 @@ Originally based on [chunky/jsbgodot](https://github.com/chunky/jsbgodot/tree/ma
    scons -j8
    ```
 
-4. Copy the built library to the project:
-   ```bash
-   cp libgojb.macos.template_debug.arm64.dylib gojb/bin/
-   ```
-
-5. Open the project in Godot:
+4. Open the project in Godot:
    ```bash
    cd gojb
    godot --editor
