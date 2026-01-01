@@ -41,6 +41,9 @@ void JSBGodot::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_input_elevator"), &JSBGodot::get_input_elevator);
     ClassDB::bind_method(D_METHOD("get_flaps"), &JSBGodot::get_flaps);
     ClassDB::bind_method(D_METHOD("get_propeller_rpm"), &JSBGodot::get_propeller_rpm);
+    ClassDB::bind_method(D_METHOD("set_terrain_elevation", "elevation_m"), &JSBGodot::set_terrain_elevation);
+    ClassDB::bind_method(D_METHOD("initialize_at_terrain", "terrain_elevation_m"), &JSBGodot::initialize_at_terrain);
+    ClassDB::bind_method(D_METHOD("is_initialized"), &JSBGodot::is_initialized);
 
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_pitch"), "set_input_pitch", "get_input_pitch");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_roll"), "set_input_roll", "get_input_roll");
@@ -238,6 +241,82 @@ double JSBGodot::get_propeller_rpm() const
         return FDMExec->GetPropertyValue("propulsion/engine[0]/propeller-rpm");
     }
     return 0.0;
+}
+
+void JSBGodot::set_terrain_elevation(double elevation_m)
+{
+    // Set the terrain elevation in JSBSim (convert meters to feet)
+    if (FDMExec && FDMExec->GetPropagate() && FDMExec->GetPropertyManager()) {
+        double elevation_ft = elevation_m * 3.28084;  // meters to feet
+        // Check if property exists before setting
+        if (FDMExec->GetPropertyManager()->HasNode("position/terrain-elevation-asl-ft")) {
+            FDMExec->SetPropertyValue("position/terrain-elevation-asl-ft", elevation_ft);
+        }
+    }
+}
+
+void JSBGodot::initialize_at_terrain(double terrain_elevation_m)
+{
+    // Re-initialize JSBSim with correct terrain elevation
+    // This must be called after terrain is known but before physics runs
+    if (!FDMExec) {
+        UtilityFunctions::print("Cannot initialize_at_terrain: FDMExec not created");
+        return;
+    }
+    
+    double terrain_ft = terrain_elevation_m * 3.28084;  // meters to feet
+    double gear_height_ft = 4.0;  // Approximate C172 gear height in feet
+    double aircraft_altitude_ft = terrain_ft + gear_height_ft;
+    
+    UtilityFunctions::print("Initializing JSBSim at terrain elevation:");
+    UtilityFunctions::print("  Terrain: ", terrain_elevation_m, "m (", terrain_ft, " ft)");
+    UtilityFunctions::print("  Aircraft altitude: ", aircraft_altitude_ft, " ft ASL");
+    
+    std::shared_ptr<JSBSim::FGInitialCondition> ic = FDMExec->GetIC();
+    
+    // Set terrain elevation FIRST
+    ic->SetTerrainElevationFtIC(terrain_ft);
+    
+    // Set aircraft altitude above terrain
+    ic->SetAltitudeASLFtIC(aircraft_altitude_ft);
+    
+    // Set initial position (keep lat/lon at 0,0 for now)
+    ic->SetLatitudeDegIC(0.0);
+    ic->SetLongitudeDegIC(0.0);
+    
+    // Set initial orientation
+    ic->SetThetaDegIC(0.0);  // Pitch
+    ic->SetPhiDegIC(0.0);    // Roll
+    ic->SetPsiDegIC(0.0);    // Yaw (heading)
+    
+    // Set initial velocities (stationary on ground)
+    ic->SetUBodyFpsIC(0.0);
+    ic->SetVBodyFpsIC(0.0);
+    ic->SetWBodyFpsIC(0.0);
+    
+    // Apply initial conditions
+    FDMExec->RunIC();
+    
+    // Start the engine
+    FDMExec->SetPropertyValue("propulsion/engine[0]/set-running", 1);
+    // Release brakes
+    FDMExec->SetPropertyValue("fcs/brake-cmd-norm", 0.0);
+    FDMExec->SetPropertyValue("fcs/parking-brake-cmd-norm", 0.0);
+    // Set mixture to full rich
+    FDMExec->SetPropertyValue("fcs/mixture-cmd-norm", 1.0);
+    // Set magnetos to both
+    FDMExec->SetPropertyValue("propulsion/magneto_cmd", 3);
+    // Start the engine
+    FDMExec->SetPropertyValue("propulsion/starter_cmd", 1.0);
+    
+    jsbsim_initialized = true;
+    
+    UtilityFunctions::print("JSBSim re-initialized at terrain elevation successfully!");
+}
+
+bool JSBGodot::is_initialized() const
+{
+    return jsbsim_initialized;
 }
 
 void JSBGodot::set_input_brake(float value)
@@ -448,6 +527,11 @@ void JSBGodot::_physics_process(const real_t delta)
     //    Your physics logic
     if (!Engine::get_singleton()->is_editor_hint())
     {
+        // Don't run physics until initialize_at_terrain() has been called
+        if (!jsbsim_initialized) {
+            return;
+        }
+        
         // Apply continuous throttle from triggers
         if (trigger_right_value > 0.1f) {
             set_input_throttle(input_throttle + trigger_right_value * 0.005f);
@@ -526,32 +610,21 @@ void JSBGodot::initialise()
     // Set initial position
     ic->SetLatitudeDegIC(0.0);
     ic->SetLongitudeDegIC(0.0);
-    ic->SetAltitudeASLFtIC(1 * 3.28084); // Convert meters to feet
+    // Don't set altitude here - will be set by initialize_at_terrain() with terrain info
 
     // Set initial orientation
     ic->SetThetaDegIC(0.0); // Pitch
     ic->SetPhiDegIC(0.0);   // Roll
     ic->SetPsiDegIC(0.0);   // Yaw
 
-    // Set initial velocities (e.g., 200 m/s forward speed)
-    ic->SetUBodyFpsIC(0.0 * 3.28084); // Convert m/s to feet per second
-    // Start the engine
-    FDMExec->SetPropertyValue("propulsion/engine[0]/set-running", 1);
-    // Release brakes
-    FDMExec->SetPropertyValue("fcs/brake-cmd-norm", 0.0);
-    // Ensure parking brake is released
-    FDMExec->SetPropertyValue("fcs/parking-brake-cmd-norm", 0.0);
-    // Set mixture to full rich
-    FDMExec->SetPropertyValue("fcs/mixture-cmd-norm", 1.0);
-    // Set magnetos to both
-    FDMExec->SetPropertyValue("propulsion/magneto_cmd", 3); // 3 = Both
-    // Start the engine
-    FDMExec->SetPropertyValue("propulsion/starter_cmd", 1.0);
-    // Ensure the pitot-static system is enabled (example property)
-    FDMExec->SetPropertyValue("sensors/pitot_static/enable", 1);
-
-    // Apply initial conditions
-    FDMExec->RunIC();
+    // Set initial velocities
+    ic->SetUBodyFpsIC(0.0);
+    ic->SetVBodyFpsIC(0.0);
+    ic->SetWBodyFpsIC(0.0);
+    
+    // DON'T call RunIC() here - wait for initialize_at_terrain() to be called
+    // This allows terrain elevation to be set before first physics frame
+    jsbsim_initialized = false;
 }
 
 void JSBGodot::copy_inputs_to_JSBSim()

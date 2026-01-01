@@ -36,3 +36,11 @@ __pycache__/
 
 # Godot UID files (auto-generated)
 *.uid
+
+# Terrain data (large files, can be regenerated from R16 source)
+gojb/Terra3DData/
+gojb/terrain_data/
+*.r16
+*.exr
+*.hdr
+*.raw.aux.xml

@@ -1,12 +1,12 @@
-[gd_scene load_steps=9 format=3 uid="uid://blaieaqp413k7"]
+[gd_scene format=3 uid="uid://blaieaqp413k7"]
 
-[ext_resource type="Script" path="res://addons/terrain_3d/tools/importer.gd" id="1_60b8f"]
+[ext_resource type="Script" uid="uid://cib2rig7vup10" path="res://addons/terrain_3d/tools/importer.gd" id="1_60b8f"]
 
-[sub_resource type="Gradient" id="Gradient_88f3t"]
+[sub_resource type="Gradient" id="Gradient_555ul"]
 offsets = PackedFloat32Array(0.2, 1)
 colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
 
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_muvel"]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ij0dh"]
 noise_type = 2
 frequency = 0.03
 cellular_jitter = 3.0
@@ -18,46 +18,63 @@ domain_warp_fractal_type = 2
 domain_warp_fractal_lacunarity = 1.5
 domain_warp_fractal_gain = 1.0
 
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ve0yk"]
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_kcdxh"]
+noise = SubResource("FastNoiseLite_ij0dh")
+color_ramp = SubResource("Gradient_555ul")
 seamless = true
-color_ramp = SubResource("Gradient_88f3t")
-noise = SubResource("FastNoiseLite_muvel")
 
-[sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_p55u0"]
+[sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_34j6c"]
 _shader_parameters = {
-"blend_sharpness": 0.87,
-"height_blending": true,
-"macro_variation1": Color(1, 1, 1, 1),
-"macro_variation2": Color(1, 1, 1, 1),
-"noise1_angle": 0.0,
-"noise1_offset": Vector2(0.5, 0.5),
-"noise1_scale": 0.04,
-"noise2_scale": 0.076,
-"noise3_scale": 0.225,
-"noise_texture": SubResource("NoiseTexture2D_ve0yk"),
-"vertex_normals_distance": 128.0
+&"bias_distance": 512.0,
+&"blend_sharpness": 0.5,
+&"depth_blur": 0.0,
+&"enable_macro_variation": true,
+&"enable_projection": true,
+&"flat_terrain_normals": false,
+&"macro_variation1": Color(1, 1, 1, 1),
+&"macro_variation2": Color(1, 1, 1, 1),
+&"macro_variation_slope": 0.333,
+&"mipmap_bias": 1.0,
+&"noise1_angle": 0.0,
+&"noise1_offset": Vector2(0.5, 0.5),
+&"noise1_scale": 0.04,
+&"noise2_scale": 0.076,
+&"noise_texture": SubResource("NoiseTexture2D_kcdxh"),
+&"projection_threshold": 0.8
 }
 show_checkered = true
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8rvqy"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lsour"]
+transparency = 4
 cull_mode = 2
 vertex_color_use_as_albedo = true
 backlight_enabled = true
 backlight = Color(0.5, 0.5, 0.5, 1)
+distance_fade_mode = 1
+distance_fade_min_distance = 128.0
+distance_fade_max_distance = 96.0
 
-[sub_resource type="Terrain3DMeshAsset" id="Terrain3DMeshAsset_7je72"]
-height_offset = 0.5
-density = 10.0
-material_override = SubResource("StandardMaterial3D_8rvqy")
+[sub_resource type="Terrain3DMeshAsset" id="Terrain3DMeshAsset_ce8yv"]
 generated_type = 1
+height_offset = 0.5
+material_override = SubResource("StandardMaterial3D_lsour")
+last_lod = 0
+last_shadow_lod = 0
+lod0_range = 128.0
 
-[sub_resource type="Terrain3DAssets" id="Terrain3DAssets_op32e"]
-mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_7je72")])
+[sub_resource type="Terrain3DAssets" id="Terrain3DAssets_42p8u"]
+mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_ce8yv")])
 
-[node name="Importer" type="Terrain3D"]
-material = SubResource("Terrain3DMaterial_p55u0")
-assets = SubResource("Terrain3DAssets_op32e")
+[node name="Importer" type="Terrain3D" unique_id=2056751184]
+material = SubResource("Terrain3DMaterial_34j6c")
+assets = SubResource("Terrain3DAssets_42p8u")
 mesh_lods = 8
+show_checkered = true
 top_level = true
 script = ExtResource("1_60b8f")
+height_file_name = "/Users/gerhardgubler/code/godotjbsim/gojb/zurich_correct.r16"
+import_position = Vector2i(-2250, -1220)
+r16_range = Vector2(400, 700)
+r16_size = Vector2i(4500, 2500)
+destination_directory = "res://Terra3DData"
 metadata/_edit_lock_ = true

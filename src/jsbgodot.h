@@ -88,6 +88,21 @@ namespace godot
 
         // Propeller RPM from JSBSim
         double get_propeller_rpm() const;
+
+        // Set terrain elevation for ground collision (meters)
+        void set_terrain_elevation(double elevation_m);
+        
+        // Initialize aircraft at specific terrain elevation (meters)
+        // This must be called before the first physics step for proper ground collision
+        void initialize_at_terrain(double terrain_elevation_m);
+        
+        // Check if JSBSim is fully initialized and ready
+        bool is_initialized() const;
+        
+    private:
+        bool jsbsim_initialized = false;  // Track if JSBSim has been properly initialized
+        double pending_terrain_elevation = 0.0;  // Terrain elevation to use at initialization
+        bool has_pending_terrain = false;  // Whether we have a terrain elevation to set
     };
 
 }

@@ -68,6 +68,9 @@ var front_wheel_node: Node3D
 var front_wheel_base_transform: Transform3D
 const FRONT_WHEEL_MAX_ANGLE: float = 30.0  # Max steering angle
 
+# Terrain3D reference for ground height queries
+var terrain3d_node: Node
+
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	print("Node3D _ready() starting...")
@@ -160,6 +163,22 @@ func _ready() -> void:
 	else:
 		print("WARNING: Front wheel node not found!")
 	
+	# Get Terrain3D node for ground height queries
+	terrain3d_node = get_node_or_null("Terrain3D")
+	if terrain3d_node:
+		print("Terrain3D node found: ", terrain3d_node)
+		print("Terrain3D class: ", terrain3d_node.get_class())
+		var tdata = terrain3d_node.get("data")
+		if tdata:
+			print("Terrain3D data: ", tdata)
+			print("Terrain3D data class: ", tdata.get_class())
+			# Initialize JSBSim with correct terrain elevation
+			_initialize_jsbsim_on_terrain(tdata)
+		else:
+			print("Terrain3D data is null")
+	else:
+		print("WARNING: Terrain3D node not found - ground collision may not work correctly!")
+	
 	# Print the aircraft model hierarchy to find control surfaces
 	print("=== Aircraft Node Hierarchy ===")
 	print_node_tree($AC, 0)
@@ -216,8 +235,172 @@ func _create_propeller_blur_disc() -> void:
 		print("WARNING: Propeller is not a MeshInstance3D!")
 
 
+# Deferred terrain initialization - waits for first physics frame for raycast to work
+var _pending_terrain_init: bool = false
+var _terrain_data_for_init = null
+
+# Initialize JSBSim with correct terrain elevation at startup
+# This must be called BEFORE JSBSim runs its physics, setting terrain during IC
+func _initialize_jsbsim_on_terrain(terrain_data) -> void:
+	# Store for deferred initialization in first physics frame
+	_pending_terrain_init = true
+	_terrain_data_for_init = terrain_data
+	print("=== Terrain initialization queued for first physics frame ===")
+
+
+# Called from _physics_process on first frame to do actual terrain positioning
+func _do_deferred_terrain_init() -> void:
+	if not _pending_terrain_init or _terrain_data_for_init == null:
+		return
+	_pending_terrain_init = false
+	
+	var terrain_data = _terrain_data_for_init
+	_terrain_data_for_init = null
+	
+	var ac_node = get_node_or_null("AC")
+	if not ac_node or not jsb_node:
+		print("Cannot initialize JSBSim on terrain - missing AC or JSBGodot node")
+		return
+	
+	# Move aircraft to origin first for proper terrain alignment
+	ac_node.global_position.x = 0.0
+	ac_node.global_position.z = 0.0
+	
+	# Get terrain height from API
+	var api_height = terrain_data.get_height(Vector3(0, 0, 0))
+	print("=== Terrain3D API get_height(0,0,0) = ", api_height, "m ===")
+	
+	# Use physics raycast to find actual visual terrain mesh height
+	var space_state = get_world_3d().direct_space_state
+	var ray_origin = Vector3(0, 2000, 0)  # Start high above
+	var ray_end = Vector3(0, -500, 0)     # Go below expected terrain
+	var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	
+	var result = space_state.intersect_ray(query)
+	var visual_terrain_height: float
+	
+	if result:
+		visual_terrain_height = result.position.y
+		print("=== Raycast hit terrain at Y: ", visual_terrain_height, "m ===")
+		print("=== Difference from API: ", visual_terrain_height - api_height, "m ===")
+	else:
+		# Fallback: use get_height 
+		visual_terrain_height = api_height
+		print("=== Raycast FAILED - terrain has no collision shape! Using API height: ", visual_terrain_height, "m ===")
+	
+	# Position aircraft on the terrain
+	var gear_height = 1.5
+	var new_y = visual_terrain_height + gear_height
+	
+	print("=== Positioning aircraft at Y: ", new_y, "m (terrain: ", visual_terrain_height, "m) ===")
+	
+	ac_node.global_position.y = new_y
+	
+	# Initialize JSBSim with the terrain height for ground collision
+	jsb_node.initialize_at_terrain(visual_terrain_height)
+	
+	terrain_initialized = true
+	print("=== JSBSim terrain initialization complete ===")
+
+
+# Position aircraft on terrain at startup
+func _position_aircraft_on_terrain(terrain_data) -> void:
+	var ac_node = get_node_or_null("AC")
+	if not ac_node:
+		return
+	
+	# Get current aircraft position
+	var ac_position = ac_node.global_position
+	
+	# Query terrain height at aircraft position
+	if not terrain_data.has_method("get_height"):
+		print("Terrain3DData does not have get_height method - cannot position aircraft")
+		return
+	
+	var terrain_height = terrain_data.get_height(ac_position)
+	
+	# Check for NAN (position outside defined regions)
+	if is_nan(terrain_height):
+		print("Aircraft position is outside terrain regions - keeping original position")
+		return
+	
+	# Position aircraft on terrain (add small offset for gear height)
+	var gear_height = 1.5  # Approximate landing gear height in meters
+	var new_y = terrain_height + gear_height
+	
+	print("Positioning aircraft on terrain:")
+	print("  Terrain height: ", terrain_height, "m")
+	print("  Aircraft old Y: ", ac_position.y, "m")
+	print("  Aircraft new Y: ", new_y, "m (terrain + ", gear_height, "m gear)")
+	
+	ac_node.global_position.y = new_y
+	# Note: Don't call set_terrain_elevation here - JSBSim may not be ready
+	# The per-frame _update_terrain_elevation will handle it once simulation starts
+
+
+# Update terrain elevation for JSBSim ground collision (per-frame, after init)
+# This updates the terrain elevation as the aircraft moves over varying terrain
+var terrain_debug_printed: bool = false
+var terrain_initialized: bool = false
+var terrain_init_frame_count: int = 0
+const TERRAIN_INIT_DELAY_FRAMES: int = 60  # Wait 60 frames (~1 sec) before per-frame updates
+func _update_terrain_elevation() -> void:
+	# DISABLED: Per-frame terrain updates cause physics instability
+	# The terrain is set once during initialization in _initialize_jsbsim_on_terrain()
+	# TODO: Investigate why per-frame updates cause JSBSim to crash
+	return
+	
+	# Skip if not yet initialized (initialization happens in _ready via _initialize_jsbsim_on_terrain)
+	if not terrain_initialized:
+		return
+	
+	# Skip first N frames to let JSBSim stabilize
+	terrain_init_frame_count += 1
+	if terrain_init_frame_count < TERRAIN_INIT_DELAY_FRAMES:
+		return
+	
+	if not jsb_node:
+		return
+	if not is_instance_valid(terrain3d_node):
+		return
+	
+	# Get aircraft position in world space
+	var ac_node = get_node_or_null("AC")
+	if not ac_node:
+		return
+	
+	var ac_position = ac_node.global_position
+	
+	# Query terrain height at aircraft position
+	# Terrain3D API: terrain3d.data.get_height(global_position)
+	var terrain_data = terrain3d_node.get("data")
+	if not is_instance_valid(terrain_data):
+		return
+	
+	if not terrain_data.has_method("get_height"):
+		if not terrain_debug_printed:
+			print("Terrain3DData does not have get_height method!")
+			terrain_debug_printed = true
+		return
+	
+	var terrain_height = terrain_data.get_height(ac_position)
+	
+	# Check for NAN (position outside defined regions)
+	if is_nan(terrain_height):
+		terrain_height = 0.0  # Default to sea level if outside terrain
+	
+	# Set terrain elevation in JSBSim (in meters - the method converts to feet)
+	jsb_node.set_terrain_elevation(terrain_height)
+
+
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
+	# Do deferred terrain initialization if pending (needs physics world ready)
+	if _pending_terrain_init:
+		_do_deferred_terrain_init()
+	
 	if Input.is_action_just_pressed("flip_camera"):
 		flip_camera()
 	
@@ -229,6 +412,9 @@ func _process(delta: float) -> void:
 	
 	# Animate control surfaces
 	animate_control_surfaces()
+	
+	# Update terrain elevation for JSBSim ground collision
+	_update_terrain_elevation()
 		
 	if jsb_node:
 		var airspeed = jsb_node.get_airspeed_knots()
