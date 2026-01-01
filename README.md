@@ -53,7 +53,7 @@ Originally based on [chunky/jsbgodot](https://github.com/chunky/jsbgodot/tree/ma
 
 1. Clone the repository with submodules:
    ```bash
-   git clone --recursive https://github.com/yourusername/godotjbsim.git
+   git clone --recursive https://github.com/Q-coder/godotjbsim.git
    cd godotjbsim
    ```
 
@@ -68,22 +68,17 @@ Originally based on [chunky/jsbgodot](https://github.com/chunky/jsbgodot/tree/ma
 
 3. Build the GDExtension:
    ```bash
-   # macOS ARM64
-   scons arch=arm64 -j8
+   # macOS ARM64 (On macOS)
+   scons arch=arm64
    
-   # macOS x86_64
-   scons arch=x86_64 -j8
+   # macOS x86_64 (On macOS)
+   scons arch=x86_64
    
    # Linux
-   scons -j8
+   scons
    ```
 
-4. Copy the built library to the project:
-   ```bash
-   cp libgojb.macos.template_debug.arm64.dylib gojb/bin/
-   ```
-
-5. Open the project in Godot:
+4. Open the project in Godot:
    ```bash
    cd gojb
    godot --editor

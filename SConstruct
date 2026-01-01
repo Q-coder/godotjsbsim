@@ -28,8 +28,7 @@ env.Append(LIBS=[jsb_library])
 
 src = Glob("src/*.cpp")
 
-if env['platform'] == 'macos':
-  libpath = 'libgojb{}{}'.format( env['suffix'], env['SHLIBSUFFIX'] )
-  sharedlib = env.SharedLibrary(libpath,src)
-  Default(sharedlib)
+libpath = 'gojb/bin/libgojb{}{}'.format( env['suffix'], env['SHLIBSUFFIX'] )
+sharedlib = env.SharedLibrary(libpath,src)
+Default(sharedlib)
 
