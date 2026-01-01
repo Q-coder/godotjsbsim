@@ -1,5 +1,10 @@
 extends Node3D
 
+# Terrain coordinate system constants (Swiss LV95)
+# These define the relationship between Godot world coords and Swiss coordinates
+const TERRAIN_CENTER_E: float = 2686872.0  # Swiss Easting at Godot X=0
+const TERRAIN_CENTER_N: float = 1257719.0  # Swiss Northing at Godot Z=0
+
 # Assuming your JSBGodot node is a child of the current node
 var jsb_node: Node
 var active_camera: Camera3D
@@ -512,10 +517,15 @@ func _process(delta: float) -> void:
 		
 		# Coordinate display
 		var godot_pos = jsb_node.get_godot_position()
-		var lat = jsb_node.get_latitude_deg()
-		var lon = jsb_node.get_longitude_deg()
+		# Convert Godot position to Swiss LV95 coordinates
+		# Godot X = TERRAIN_CENTER_E - Swiss_E  =>  Swiss_E = TERRAIN_CENTER_E - Godot_X
+		# Godot Z = Swiss_N - TERRAIN_CENTER_N  =>  Swiss_N = TERRAIN_CENTER_N + Godot_Z
+		var swiss_e = TERRAIN_CENTER_E - godot_pos.x
+		var swiss_n = TERRAIN_CENTER_N + godot_pos.z
+		# Convert Swiss LV95 to WGS84 lat/lon (approximate formula)
+		var lat_lon = lv95_to_wgs84(swiss_e, swiss_n)
 		$Control/Label6.text = "Godot: X=%.1f Y=%.1f Z=%.1f" % [godot_pos.x, godot_pos.y, godot_pos.z]
-		$Control/Label7.text = "Lat/Lon: %.6f / %.6f" % [lat, lon]
+		$Control/Label7.text = "Lat/Lon: %.6f / %.6f" % [lat_lon.x, lat_lon.y]
 	else:
 		$Label.text = "JSBGodot node not found."
 
@@ -811,3 +821,33 @@ func animate_control_surfaces() -> void:
 		var flap_angle = -flap_input * FLAP_MAX_ANGLE  # Inverted
 		right_flap_node.transform = right_flap_base_transform
 		right_flap_node.rotation_degrees.x = right_flap_base_transform.basis.get_euler().x * (180.0/PI) + flap_angle
+
+
+# Convert Swiss LV95 coordinates to WGS84 latitude/longitude
+# Based on the approximate formulas from swisstopo
+# Returns Vector2(latitude, longitude) in degrees
+func lv95_to_wgs84(easting: float, northing: float) -> Vector2:
+	# Convert to auxiliary values (shift origin and scale)
+	var y_aux = (easting - 2600000.0) / 1000000.0
+	var x_aux = (northing - 1200000.0) / 1000000.0
+	
+	# Calculate latitude in 10000" units
+	var lat_aux = 16.9023892 \
+		+ 3.238272 * x_aux \
+		- 0.270978 * y_aux * y_aux \
+		- 0.002528 * x_aux * x_aux \
+		- 0.0447 * y_aux * y_aux * x_aux \
+		- 0.0140 * x_aux * x_aux * x_aux
+	
+	# Calculate longitude in 10000" units
+	var lon_aux = 2.6779094 \
+		+ 4.728982 * y_aux \
+		+ 0.791484 * y_aux * x_aux \
+		+ 0.1306 * y_aux * x_aux * x_aux \
+		- 0.0436 * y_aux * y_aux * y_aux
+	
+	# Convert to degrees
+	var latitude = lat_aux * 100.0 / 36.0
+	var longitude = lon_aux * 100.0 / 36.0
+	
+	return Vector2(latitude, longitude)
