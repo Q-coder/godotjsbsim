@@ -370,16 +370,11 @@ func _do_deferred_terrain_init() -> void:
 	print("=== JSBSim terrain elevation: ", jsbsim_terrain_elevation, "m (", jsbsim_terrain_elevation * 3.28084, " ft) ===")
 	print("=== JSBSim elevation offset: ", jsbsim_elevation_offset, "m (Godot Y + offset = JSBSim ASL) ===")
 	
-	# Calculate the Y offset to transform JSBSim world coordinates to Godot world coordinates
-	# JSBSim outputs position relative to its INITIAL position (d_alt = altitude - ref_alt)
-	# When on ground at ref_alt, JSBSim Y = 0
-	# We need to shift that to Godot's terrain Y position
-	# Small additional offset (0.3m) to keep wheels slightly above ground
-	const WHEEL_GROUND_CLEARANCE: float = 0.6  # Meters to lift aircraft to prevent wheels clipping
-	var godot_terrain_y_offset = visual_terrain_height + WHEEL_GROUND_CLEARANCE
-	print("=== Setting godot_terrain_y_offset: ", godot_terrain_y_offset, "m ===")
-	print("    (Godot terrain Y: ", visual_terrain_height, "m + ", WHEEL_GROUND_CLEARANCE, "m clearance)")
-	jsb_node.set_godot_terrain_y_offset(godot_terrain_y_offset)
+	# Small vertical offset to lift aircraft visual model so wheels don't clip into terrain
+	# This is added to altitude_m in C++ to get final Godot Y position
+	const WHEEL_GROUND_CLEARANCE: float = 0.5  # Meters - adjust if wheels clip or float
+	print("=== Setting wheel clearance offset: ", WHEEL_GROUND_CLEARANCE, "m ===")
+	jsb_node.set_godot_terrain_y_offset(WHEEL_GROUND_CLEARANCE)
 	
 	# Initialize JSBSim with the REAL terrain height for ground collision & altimeter
 	jsb_node.initialize_at_terrain(jsbsim_terrain_elevation)

@@ -752,9 +752,9 @@ void JSBGodot::copy_outputs_from_JSBSim()
     // Get local position in meters
     Vector3 local_position = lat_lon_alt_to_local(latitude, longitude, altitude_m);
     
-    // Apply Godot terrain Y offset to transform JSBSim world to Godot world
-    // JSBSim altitude is real-world ASL, but Godot terrain may be at different Y
-    local_position.y += godot_terrain_y_offset;
+    // For terrain imported with offset 0, Godot Y = altitude in meters
+    // godot_terrain_y_offset is a small adjustment (e.g. 0.5m) to lift wheels above ground
+    local_position.y = altitude_m + godot_terrain_y_offset;
 
     // Get Euler angles (in radians) from JSBSim
     double bank = Propagate->GetEuler(1);    // Roll
