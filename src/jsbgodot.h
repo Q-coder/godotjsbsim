@@ -104,7 +104,16 @@ namespace godot
         // Check if JSBSim is fully initialized and ready
         bool is_initialized() const;
         
+        // Get current position data
+        double get_latitude_deg() const;
+        double get_longitude_deg() const;
+        Vector3 get_godot_position() const;
+        
     private:
+        // Cache position data for getters
+        double cached_latitude = 0.0;
+        double cached_longitude = 0.0;
+        Vector3 cached_godot_position = Vector3(0, 0, 0);
         bool jsbsim_initialized = false;  // Track if JSBSim has been properly initialized
         double pending_terrain_elevation = 0.0;  // Terrain elevation to use at initialization
         bool has_pending_terrain = false;  // Whether we have a terrain elevation to set

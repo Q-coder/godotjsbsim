@@ -152,6 +152,26 @@ scale = Vector2(5, 5)
 text = "Text 5
 "
 
+[node name="Label6" type="Label" parent="Control"]
+modulate = Color(0.8, 1, 0.8, 1)
+layout_mode = 0
+offset_left = 35.0
+offset_top = 2416.0
+offset_right = 400.0
+offset_bottom = 2489.0
+scale = Vector2(5, 5)
+text = "Godot: X Y Z"
+
+[node name="Label7" type="Label" parent="Control"]
+modulate = Color(1, 0.9, 0.6, 1)
+layout_mode = 0
+offset_left = 35.0
+offset_top = 2511.0
+offset_right = 400.0
+offset_bottom = 2584.0
+scale = Vector2(5, 5)
+text = "Lat/Lon: 0.0 / 0.0"
+
 [node name="Terrain3D" type="Terrain3D" parent="." unique_id=962717072]
 data_directory = "res://Terra3DData"
 material = SubResource("Terrain3DMaterial_6iypd")

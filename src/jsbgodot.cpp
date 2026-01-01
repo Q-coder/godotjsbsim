@@ -46,6 +46,9 @@ void JSBGodot::_bind_methods()
     ClassDB::bind_method(D_METHOD("is_initialized"), &JSBGodot::is_initialized);
     ClassDB::bind_method(D_METHOD("set_godot_terrain_y_offset", "offset_m"), &JSBGodot::set_godot_terrain_y_offset);
     ClassDB::bind_method(D_METHOD("get_godot_terrain_y_offset"), &JSBGodot::get_godot_terrain_y_offset);
+    ClassDB::bind_method(D_METHOD("get_latitude_deg"), &JSBGodot::get_latitude_deg);
+    ClassDB::bind_method(D_METHOD("get_longitude_deg"), &JSBGodot::get_longitude_deg);
+    ClassDB::bind_method(D_METHOD("get_godot_position"), &JSBGodot::get_godot_position);
 
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_pitch"), "set_input_pitch", "get_input_pitch");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "input_roll"), "set_input_roll", "get_input_roll");
@@ -360,6 +363,21 @@ double JSBGodot::get_altitude_ft() const
 double JSBGodot::get_heading() const
 {
     return heading_deg;
+}
+
+double JSBGodot::get_latitude_deg() const
+{
+    return cached_latitude;
+}
+
+double JSBGodot::get_longitude_deg() const
+{
+    return cached_longitude;
+}
+
+Vector3 JSBGodot::get_godot_position() const
+{
+    return cached_godot_position;
 }
 
 void JSBGodot::_input(const Ref<InputEvent> event)
@@ -742,6 +760,10 @@ void JSBGodot::copy_outputs_from_JSBSim()
     double latitude = Propagate->GetLatitudeDeg();
     double longitude = Propagate->GetLongitudeDeg();
     altitude_ft = Propagate->GetAltitudeASL();
+    
+    // Cache lat/lon for getter methods
+    cached_latitude = latitude;
+    cached_longitude = longitude;
 
     // Convert altitude from feet to meters
     double altitude_m = altitude_ft * 0.3048;
@@ -755,6 +777,9 @@ void JSBGodot::copy_outputs_from_JSBSim()
     // For terrain imported with offset 0, Godot Y = altitude in meters
     // godot_terrain_y_offset is a small adjustment (e.g. 0.5m) to lift wheels above ground
     local_position.y = altitude_m + godot_terrain_y_offset;
+    
+    // Cache Godot position for getter
+    cached_godot_position = local_position;
 
     // Get Euler angles (in radians) from JSBSim
     double bank = Propagate->GetEuler(1);    // Roll

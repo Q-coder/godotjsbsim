@@ -509,6 +509,13 @@ func _process(delta: float) -> void:
 		$Control/Label3.text = "Verical Speed: " + str(round(vertical_spd)) + " ft/m"
 		$Control/Label4.text = "Throttle: " +str(round(throttle_percent)) + " %"
 		$Control/Label5.text = "Heading: " +str(round(heading))
+		
+		# Coordinate display
+		var godot_pos = jsb_node.get_godot_position()
+		var lat = jsb_node.get_latitude_deg()
+		var lon = jsb_node.get_longitude_deg()
+		$Control/Label6.text = "Godot: X=%.1f Y=%.1f Z=%.1f" % [godot_pos.x, godot_pos.y, godot_pos.z]
+		$Control/Label7.text = "Lat/Lon: %.6f / %.6f" % [lat, lon]
 	else:
 		$Label.text = "JSBGodot node not found."
 
