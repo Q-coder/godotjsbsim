@@ -12,41 +12,50 @@ The flight simulator uses:
 
 These systems need to share terrain elevation data so the aircraft can properly interact with the ground.
 
-## Current Terrain: Schaffhausen Region
+## Current Terrain: Schaffhausen Region (8km Extended)
 
 The active terrain covers the Schaffhausen area in northern Switzerland:
 
 | Parameter | Value |
 |-----------|-------|
-| **Center** | E 2,681,968 / N 1,282,869 (Schmerlat Airfield) |
+| **Center** | E 2,685,750 / N 1,282,500 |
 | **Size** | 8 km × 8 km |
 | **Resolution** | 1m per pixel (8000×8000) |
-| **Elevation Range** | 402m - 806m ASL |
-| **File** | `schaffhausen.r16` |
+| **Elevation Range** | 422m - 799m ASL |
+| **File** | `schaffhausen_8km_extended.r16` |
 
 ### Terrain Bounds (Swiss LV95)
-- **West**: E 2,677,968
-- **East**: E 2,685,968
-- **South**: N 1,278,869
-- **North**: N 1,286,869
+- **West**: E 2,681,750
+- **East**: E 2,689,750
+- **South**: N 1,278,500
+- **North**: N 1,286,500
 
-### Planned Extension: 16km × 16km
-
-To include Schaffhausen city (Munot, Altstadt), the terrain will be extended:
-
-| Parameter | Current | Extended |
-|-----------|---------|----------|
-| **Center** | E 2,681,968 | E 2,685,000 |
-| **Size** | 8 km × 8 km | 16 km × 16 km |
-| **Resolution** | 8000×8000 | 16000×16000 |
-| **West Edge** | E 2,677,968 | E 2,677,000 |
-| **East Edge** | E 2,685,968 | E 2,693,000 |
-
-This covers:
-- ✅ Schmerlat Airfield (E 2,681,968)
+### Coverage
+- ✅ Schmerlat Airfield (E 2,681,968) - 218m from west edge
 - ✅ Hallau wine village
-- ✅ Schaffhausen city center (E 2,689,500)
-- ✅ Rhine Falls area
+- ✅ Schaffhausen city edge (E 2,689,500) - 250m from east edge
+
+### Terrain3D Import Settings
+
+| Setting | Value |
+|---------|-------|
+| **File** | `schaffhausen_8km_extended.r16` |
+| **R16 Size** | 8000 |
+| **Init Position** | `Vector2i(-4000, -4000)` |
+| **r16_range** | `Vector2(0, 810)` |
+| **Height Offset** | `0` |
+| **vertex_spacing** | `1.0` |
+
+### Previous Terrains (Archived)
+
+| Parameter | Current 8km Extended | Previous 12km (Failed) | Original 8km |
+|-----------|---------------------|----------------------|--------------|
+| **Center** | E 2,685,750 / N 1,282,500 | E 2,684,000 / N 1,282,500 | E 2,681,968 / N 1,282,869 |
+| **Size** | 8×8 km | 12×12 km | 8×8 km |
+| **File** | `schaffhausen_8km_extended.r16` | `schaffhausen_extended.r16` | `schaffhausen.r16` |
+| **Status** | Active | Exceeds Terrain3D position limit | Archived |
+
+**Note**: Terrain3D has a position limit of ±4096, so maximum terrain size with init position at corner is 8192×8192 pixels.
 
 ## Terrain Processing Pipeline
 

@@ -77,8 +77,10 @@ const BUILDING_TILES_ZURICH: Array[Dictionary] = [
 	{"id": "1092-12", "center": Vector3(18532, 0, -10491), "path": "res://Assets/buildings/buildings_1092-12.glb"},
 ]
 
-## Schaffhausen/Schmerlat tiles (terrain center: E 2681968, N 1282869)
-## Centers calculated from actual building bounds in each tile
+## Schaffhausen/Schmerlat tiles
+## Buildings were converted with origin E 2681968, N 1282869 (Schmerlat Airfield)
+## Terrain center is also E 2681968, N 1282869 - no offset needed
+const BUILDING_ORIGIN_OFFSET: Vector3 = Vector3(0, 0, 0)
 const BUILDING_TILES_SCHAFFHAUSEN: Array[Dictionary] = [
 	{"id": "1031-14", "center": Vector3(2903, 0, 2631), "path": "res://Assets/buildings_schaffhausen/buildings_1031-14.glb"},
 	{"id": "1031-23", "center": Vector3(-1451, 0, 2597), "path": "res://Assets/buildings_schaffhausen/buildings_1031-23.glb"},
@@ -239,7 +241,11 @@ func _instantiate_tile(tile_id: String, resource: Resource) -> void:
 	instance.name = "Buildings_" + tile_id
 	
 	# Apply building offset (buildings already have correct Swiss ASL elevations)
-	instance.position = building_offset
+	# Add terrain center offset if buildings were converted with different origin
+	var offset = building_offset
+	if terrain_area == TerrainArea.SCHAFFHAUSEN:
+		offset += BUILDING_ORIGIN_OFFSET
+	instance.position = offset
 	
 	# Apply building colors
 	_apply_building_materials(instance)

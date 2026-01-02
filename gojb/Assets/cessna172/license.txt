@@ -1,0 +1,11 @@
+Model Information:
+* title:	Cessna172
+* source:	https://sketchfab.com/3d-models/cessna172-d1b15841c29c43d0862667300bad55a4
+* author:	KOG_THORNS (https://sketchfab.com/ioai25312)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Cessna172" (https://sketchfab.com/3d-models/cessna172-d1b15841c29c43d0862667300bad55a4) by KOG_THORNS (https://sketchfab.com/ioai25312) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

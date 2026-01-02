@@ -2,8 +2,8 @@ extends Node3D
 
 # Terrain coordinate system constants (Swiss LV95)
 # These define the relationship between Godot world coords and Swiss coordinates
-# Schaffhausen heightmap bounds: E 2677968-2685968, N 1278869-1286869 (8km x 8km)
-# Center: E 2681968, N 1282869 (Schmerlat Airfield)
+# Schaffhausen heightmap: 8km x 8km centered on Schmerlat Airfield
+# Bounds: E 2677968-2685968, N 1278869-1286869
 const TERRAIN_CENTER_E: float = 2681968.0  # Swiss Easting at Godot X=0
 const TERRAIN_CENTER_N: float = 1282869.0  # Swiss Northing at Godot Z=0
 

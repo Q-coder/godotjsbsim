@@ -44,3 +44,22 @@ gojb/terrain_data/
 *.exr
 *.hdr
 *.raw.aux.xml
+
+# Terrain cache (downloaded SwissTopo TIFs - regenerate with scripts)
+terrain_cache/
+
+# Building source data (large GDB files - keep only Schaffhausen)
+# Zurich area tiles (1031-*, 1032-*, 1071-*)
+gojb/buildings_data/swissbuildings3d_3_0_*_1031-*
+gojb/buildings_data/swissbuildings3d_3_0_*_1032-*
+gojb/buildings_data/swissbuildings3d_3_0_*_1071-*
+gojb/buildings_data/swissbuildings3d_3_0_*_1072-*
+gojb/buildings_data/test_tile*
+
+# Zurich Airport buildings (GLB) - exclude for now
+gojb/Assets/buildings/
+
+# Keep only Schaffhausen buildings (1091-*, 1092-*)
+# gojb/buildings_data/swissbuildings3d_3_0_*_1091-*
+# gojb/buildings_data/swissbuildings3d_3_0_*_1092-*
+# gojb/Assets/buildings_schaffhausen/
