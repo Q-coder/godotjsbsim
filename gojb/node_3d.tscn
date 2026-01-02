@@ -3,8 +3,8 @@
 [ext_resource type="Script" uid="uid://seeaclvwcq0r" path="res://node_3d.gd" id="1_1r08c"]
 [ext_resource type="PackedScene" uid="uid://dxgh4imubsngc" path="res://ac.tscn" id="2_yxcfd"]
 [ext_resource type="PackedScene" uid="uid://c8env1r0nment" path="res://environment.tscn" id="6_envir"]
-[ext_resource type="Script" uid="uid://building_loader_gd_uid" path="res://building_loader.gd" id="7_bldng"]
 [ext_resource type="Texture2D" uid="uid://cditync2r7ipo" path="res://Textures/coast_sand_rocks_02_diff_4k.png" id="6_i5arm"]
+[ext_resource type="Script" path="res://building_loader.gd" id="7_bldng"]
 [ext_resource type="Texture2D" uid="uid://tgqmh32fcwbu" path="res://Textures/coast_sand_rocks_02_rough_4k.png" id="7_wc5p8"]
 
 [sub_resource type="Gradient" id="Gradient_wc5p8"]
@@ -87,7 +87,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.3009338, 0)
 script = ExtResource("1_1r08c")
 
 [node name="AC" parent="." unique_id=754408209 instance=ExtResource("2_yxcfd")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.999999, -1262.1655, 10.215652, -1598.5332)
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, -1262.1655, 10.215652, -1598.5332)
 
 [node name="Environment" parent="." unique_id=1222445889 instance=ExtResource("6_envir")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 415.02835, 0)
@@ -144,33 +144,43 @@ text = "Text 4"
 [node name="Label5" type="Label" parent="Control" unique_id=201692843]
 modulate = Color(0.329412, 1, 1, 1)
 layout_mode = 0
-offset_left = 3818.0
-offset_top = 2326.0
-offset_right = 4016.0
-offset_bottom = 2361.0
+offset_left = 3823.0
+offset_top = 2313.0
+offset_right = 4069.0
+offset_bottom = 2362.0
 scale = Vector2(5, 5)
 text = "Text 5
 "
 
-[node name="Label6" type="Label" parent="Control"]
+[node name="Label6" type="Label" parent="Control" unique_id=930621710]
 modulate = Color(0.8, 1, 0.8, 1)
 layout_mode = 0
-offset_left = 35.0
-offset_top = 2416.0
-offset_right = 400.0
-offset_bottom = 2489.0
+offset_left = 40.0
+offset_top = 207.00049
+offset_right = 405.0
+offset_bottom = 280.0005
 scale = Vector2(5, 5)
 text = "Godot: X Y Z"
 
-[node name="Label7" type="Label" parent="Control"]
+[node name="Label7" type="Label" parent="Control" unique_id=1386947090]
 modulate = Color(1, 0.9, 0.6, 1)
 layout_mode = 0
-offset_left = 35.0
-offset_top = 2511.0
-offset_right = 400.0
-offset_bottom = 2584.0
+offset_left = 40.0
+offset_top = 67.00049
+offset_right = 405.0
+offset_bottom = 140.00049
 scale = Vector2(5, 5)
 text = "Lat/Lon: 0.0 / 0.0"
+
+[node name="Label8" type="Label" parent="Control" unique_id=307479243]
+modulate = Color(1, 0.9, 0.6, 1)
+layout_mode = 0
+offset_left = 1713.0
+offset_top = 85.0
+offset_right = 2051.2
+offset_bottom = 151.4
+scale = Vector2(5, 5)
+text = "heading: "
 
 [node name="Terrain3D" type="Terrain3D" parent="." unique_id=962717072]
 data_directory = "res://Terra3DData"
@@ -179,8 +189,5 @@ assets = SubResource("Terrain3DAssets_tcnuu")
 top_level = true
 metadata/_edit_lock_ = true
 
-[node name="BuildingLoader" type="Node3D" parent="."]
+[node name="BuildingLoader" type="Node3D" parent="." unique_id=1549025246]
 script = ExtResource("7_bldng")
-load_distance = 8000.0
-unload_distance = 12000.0
-debug_mode = true

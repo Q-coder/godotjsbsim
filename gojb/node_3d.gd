@@ -2,8 +2,10 @@ extends Node3D
 
 # Terrain coordinate system constants (Swiss LV95)
 # These define the relationship between Godot world coords and Swiss coordinates
-const TERRAIN_CENTER_E: float = 2686872.0  # Swiss Easting at Godot X=0
-const TERRAIN_CENTER_N: float = 1257719.0  # Swiss Northing at Godot Z=0
+# Schaffhausen heightmap bounds: E 2677968-2685968, N 1278869-1286869 (8km x 8km)
+# Center: E 2681968, N 1282869 (Schmerlat Airfield)
+const TERRAIN_CENTER_E: float = 2681968.0  # Swiss Easting at Godot X=0
+const TERRAIN_CENTER_N: float = 1282869.0  # Swiss Northing at Godot Z=0
 
 # Assuming your JSBGodot node is a child of the current node
 var jsb_node: Node
@@ -22,12 +24,12 @@ const HEAD_LOOK_SPEED: float = 90.0 # Degrees per second
 # Spot camera orbit angles (in degrees) - for external camera
 var orbit_yaw: float = 135.0    # Horizontal angle around aircraft (start behind-left)
 var orbit_pitch: float = 15.0   # Vertical angle (elevation)
-var orbit_distance: float = 15.0  # Distance from aircraft
+var orbit_distance: float = 6.0   # Distance from aircraft (default view)
 const ORBIT_PITCH_MIN: float = -10.0   # Min elevation (slightly below)
 const ORBIT_PITCH_MAX: float = 80.0    # Max elevation (almost top-down)
 const ORBIT_SPEED: float = 90.0        # Degrees per second
 const ORBIT_ZOOM_SPEED: float = 10.0   # Units per second
-const ORBIT_DISTANCE_MIN: float = 5.0  # Closest zoom
+const ORBIT_DISTANCE_MIN: float = 1.5  # Closest zoom (scaled for 0.1x model)
 const ORBIT_DISTANCE_MAX: float = 50.0 # Furthest zoom
 
 # Control surface nodes
@@ -75,6 +77,13 @@ const FRONT_WHEEL_MAX_ANGLE: float = 30.0  # Max steering angle
 
 # Terrain3D reference for ground height queries
 var terrain3d_node: Node
+
+# Slew mode - free movement without physics
+var slew_mode: bool = false
+var slew_speed: float = 100.0  # Base speed in m/s
+var slew_fast_multiplier: float = 5.0  # Speed multiplier when holding boost
+var slew_vertical_speed: float = 60.0  # Vertical movement speed
+var _slew_key_held: bool = false  # Prevent key repeat
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -280,6 +289,7 @@ func _create_propeller_blur_disc() -> void:
 		print("WARNING: Propeller is not a MeshInstance3D!")
 
 
+
 # Deferred terrain initialization - waits for first physics frame for raycast to work
 var _pending_terrain_init: bool = false
 var _terrain_data_for_init = null
@@ -377,7 +387,7 @@ func _do_deferred_terrain_init() -> void:
 	
 	# Small vertical offset to lift aircraft visual model so wheels don't clip into terrain
 	# This is added to altitude_m in C++ to get final Godot Y position
-	const WHEEL_GROUND_CLEARANCE: float = 0.5  # Meters - adjust if wheels clip or float
+	const WHEEL_GROUND_CLEARANCE: float = 0.1  # Meters - adjust if wheels clip or float
 	print("=== Setting wheel clearance offset: ", WHEEL_GROUND_CLEARANCE, "m ===")
 	jsb_node.set_godot_terrain_y_offset(WHEEL_GROUND_CLEARANCE)
 	
@@ -486,6 +496,26 @@ func _process(delta: float) -> void:
 	if _pending_terrain_init:
 		_do_deferred_terrain_init()
 	
+	# Toggle slew mode with Shift+Y
+	if Input.is_key_pressed(KEY_SHIFT) and Input.is_key_pressed(KEY_Y):
+		if not _slew_key_held:
+			_slew_key_held = true
+			toggle_slew_mode()
+	else:
+		_slew_key_held = false
+	
+	# Handle slew mode movement
+	if slew_mode:
+		handle_slew_mode(delta)
+		# Allow camera controls in slew mode, but skip other processing
+		if Input.is_action_just_pressed("flip_camera"):
+			flip_camera()
+		if active_camera == camera1:
+			handle_head_look(delta)
+		else:
+			handle_orbit_camera(delta)
+		return  # Skip flight controls and HUD updates in slew mode
+	
 	if Input.is_action_just_pressed("flip_camera"):
 		flip_camera()
 	
@@ -522,12 +552,134 @@ func _process(delta: float) -> void:
 		# Godot Z = Swiss_N - TERRAIN_CENTER_N  =>  Swiss_N = TERRAIN_CENTER_N + Godot_Z
 		var swiss_e = TERRAIN_CENTER_E - godot_pos.x
 		var swiss_n = TERRAIN_CENTER_N + godot_pos.z
-		# Convert Swiss LV95 to WGS84 lat/lon (approximate formula)
-		var lat_lon = lv95_to_wgs84(swiss_e, swiss_n)
 		$Control/Label6.text = "Godot: X=%.1f Y=%.1f Z=%.1f" % [godot_pos.x, godot_pos.y, godot_pos.z]
-		$Control/Label7.text = "Lat/Lon: %.6f / %.6f" % [lat_lon.x, lat_lon.y]
+		$Control/Label7.text = "Swiss E: %s, N: %s" % [format_swiss_coord(swiss_e), format_swiss_coord(swiss_n)]
 	else:
 		$Label.text = "JSBGodot node not found."
+
+
+## Toggle slew mode on/off
+func toggle_slew_mode() -> void:
+	slew_mode = not slew_mode
+	
+	# Tell JSBGodot to pause position updates in slew mode
+	if jsb_node and jsb_node.has_method("set_slew_mode"):
+		jsb_node.set_slew_mode(slew_mode)
+	
+	if slew_mode:
+		print("=== SLEW MODE ENABLED ===")
+		print("  Controls:")
+		print("    Left stick / WASD: Move horizontally")
+		print("    Right stick Y / Q,E: Move up/down")
+		print("    Right stick X: Rotate (yaw)")
+		print("    Hold Shift: Move faster (5x)")
+		print("  Press Shift+Y to exit slew mode")
+	else:
+		print("=== SLEW MODE DISABLED ===")
+		# Clear slew-only HUD elements
+		$Control/Label8.text = ""
+		# Re-initialize JSBSim at new position
+		var ac_node = $AC
+		if ac_node and jsb_node:
+			var pos = ac_node.global_position
+			var heading = ac_node.rotation.y
+			print("  Reinitializing JSBSim at Godot position: ", pos)
+			print("  Heading: ", rad_to_deg(heading), " degrees")
+			
+			# Call JSBGodot to reinitialize at new position
+			if jsb_node.has_method("reinitialize_from_godot_position"):
+				jsb_node.reinitialize_from_godot_position(pos, heading)
+			
+			# Update terrain elevation at new position
+			_update_terrain_elevation()
+
+
+## Handle slew mode movement using gamepad
+func handle_slew_mode(delta: float) -> void:
+	var ac_node = $AC
+	if ac_node == null:
+		return
+	
+	# Speed multiplier (hold shift for faster movement)
+	var speed_mult = slew_fast_multiplier if Input.is_key_pressed(KEY_SHIFT) else 1.0
+	
+	# Get gamepad input
+	# Left stick: horizontal movement (forward/back, strafe)
+	var move_x = Input.get_joy_axis(0, JOY_AXIS_LEFT_X)  # Left/Right strafe
+	var move_z = Input.get_joy_axis(0, JOY_AXIS_LEFT_Y)  # Forward/Back
+	
+	# Right stick: rotation and vertical
+	var rotate_y = Input.get_joy_axis(0, JOY_AXIS_RIGHT_X)  # Yaw rotation
+	var move_y = -Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)  # Vertical (inverted)
+	
+	# Also support keyboard for vertical movement
+	if Input.is_key_pressed(KEY_Q) or Input.is_key_pressed(KEY_PAGEUP):
+		move_y = 1.0
+	elif Input.is_key_pressed(KEY_E) or Input.is_key_pressed(KEY_PAGEDOWN):
+		move_y = -1.0
+	
+	# Keyboard WASD support
+	if Input.is_key_pressed(KEY_W):
+		move_z = -1.0
+	elif Input.is_key_pressed(KEY_S):
+		move_z = 1.0
+	if Input.is_key_pressed(KEY_A):
+		move_x = -1.0
+	elif Input.is_key_pressed(KEY_D):
+		move_x = 1.0
+	
+	# Apply deadzone
+	if abs(move_x) < 0.1:
+		move_x = 0.0
+	if abs(move_z) < 0.1:
+		move_z = 0.0
+	if abs(rotate_y) < 0.1:
+		rotate_y = 0.0
+	if abs(move_y) < 0.1:
+		move_y = 0.0
+	
+	# Calculate movement in world space based on aircraft heading
+	var current_rotation = ac_node.rotation.y
+	var forward = Vector3(sin(current_rotation), 0, cos(current_rotation))
+	var right = Vector3(cos(current_rotation), 0, -sin(current_rotation))
+	
+	# Calculate velocity (negate move_x to fix left/right direction)
+	var velocity = Vector3.ZERO
+	velocity += forward * (-move_z) * slew_speed * speed_mult
+	velocity += right * (-move_x) * slew_speed * speed_mult
+	velocity.y = move_y * slew_vertical_speed * speed_mult
+	
+	# Apply movement
+	ac_node.global_position += velocity * delta
+	
+	# Apply rotation (yaw)
+	if abs(rotate_y) > 0.1:
+		ac_node.rotation.y -= rotate_y * 2.0 * delta  # 2 rad/s rotation speed
+	
+	# Update HUD with current position
+	var godot_pos = ac_node.global_position
+	var swiss_e = TERRAIN_CENTER_E - godot_pos.x
+	var swiss_n = TERRAIN_CENTER_N + godot_pos.z
+	
+	# Query terrain height at current position
+	var terrain_height = 0.0
+	if terrain3d_node:
+		var terrain_data = terrain3d_node.get("data")
+		if terrain_data and terrain_data.has_method("get_height"):
+			terrain_height = terrain_data.get_height(godot_pos)
+			if is_nan(terrain_height):
+				terrain_height = 0.0
+	
+	var heading_deg = fmod(rad_to_deg(-ac_node.rotation.y) + 360.0, 360.0)
+	$Control/Label.text = "=== SLEW MODE ==="
+	$Control/Label2.text = "Height AGL: %.1f m" % (godot_pos.y - terrain_height)
+	$Control/Label3.text = "Terrain: %.1f m ASL" % terrain_height
+	$Control/Label4.text = "Aircraft: %.1f m ASL" % godot_pos.y
+	$Control/Label5.text = "Shift+Y to exit"
+	$Control/Label6.text = "Godot: X=%.1f Y=%.1f Z=%.1f" % [godot_pos.x, godot_pos.y, godot_pos.z]
+	$Control/Label7.text = "Swiss E: %s, N: %s" % [format_swiss_coord(swiss_e), format_swiss_coord(swiss_n)]
+	$Control/Label8.text = "Heading: %.0f°" % heading_deg
+
 
 # Function to toggle between the two cameras in the AC node
 func flip_camera():
@@ -744,8 +896,8 @@ func animate_control_surfaces() -> void:
 		var rpm = jsb_node.get_propeller_rpm()
 		
 		# Debug RPM every few seconds
-		if Engine.get_frames_drawn() % 120 == 0:
-			print("Propeller RPM: ", rpm, " blur_disc: ", propeller_blur_disc != null)
+#		if Engine.get_frames_drawn() % 120 == 0:
+#			print("Propeller RPM: ", rpm, " blur_disc: ", propeller_blur_disc != null)
 		
 		# Convert RPM to degrees per second (RPM * 360 / 60 = RPM * 6)
 		var degrees_per_second = rpm * 6.0
@@ -784,8 +936,8 @@ func animate_control_surfaces() -> void:
 	# Animate ailerons - they move opposite to each other for roll control
 	var aileron_input = jsb_node.get_input_aileron()  # -1 to 1
 	# Debug aileron input
-	if abs(aileron_input) > 0.01:
-		print("Aileron input: ", aileron_input)
+	#if abs(aileron_input) > 0.01:
+	#	print("Aileron input: ", aileron_input)
 	
 	if left_aileron_node:
 		var left_aileron_angle = aileron_input * AILERON_MAX_ANGLE
@@ -851,3 +1003,19 @@ func lv95_to_wgs84(easting: float, northing: float) -> Vector2:
 	var longitude = lon_aux * 100.0 / 36.0
 	
 	return Vector2(latitude, longitude)
+
+
+# Format Swiss coordinate with apostrophe thousand separators
+# e.g., 2681931 -> "2'681'931"
+func format_swiss_coord(value: float) -> String:
+	var int_val = int(round(value))
+	var str_val = str(int_val)
+	var result = ""
+	var count = 0
+	# Process from right to left
+	for i in range(str_val.length() - 1, -1, -1):
+		if count > 0 and count % 3 == 0:
+			result = "'" + result
+		result = str_val[i] + result
+		count += 1
+	return result

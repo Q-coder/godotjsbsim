@@ -7,40 +7,170 @@ This document describes how to import terrain data and how the collision detecti
 The flight simulator uses:
 - **Godot Terrain3D** for visual terrain rendering and collision queries
 - **JSBSim** for flight dynamics and ground reaction physics
+- **SwissTopo swissALTI3D** for high-resolution elevation data (0.5m resolution)
+- **SwissTopo swissBUILDINGS3D** for 3D building models
 
-These two systems need to share terrain elevation data so the aircraft can properly interact with the ground.
+These systems need to share terrain elevation data so the aircraft can properly interact with the ground.
 
-## Terrain Import Procedure
+## Current Terrain: Schaffhausen Region
 
-### 1. Terrain Data Source
+The active terrain covers the Schaffhausen area in northern Switzerland:
 
-We use Swiss high-resolution terrain data (swissALTI3D) in R16 format:
-- **File**: `zurich_airport_hires.r16`
-- **Resolution**: 0.5m per pixel
-- **Format**: 16-bit unsigned integer heightmap
-- **Elevation**: Real ASL (Above Sea Level) values (~424m at Zurich Airport)
+| Parameter | Value |
+|-----------|-------|
+| **Center** | E 2,681,968 / N 1,282,869 (Schmerlat Airfield) |
+| **Size** | 8 km × 8 km |
+| **Resolution** | 1m per pixel (8000×8000) |
+| **Elevation Range** | 402m - 806m ASL |
+| **File** | `schaffhausen.r16` |
 
-### 2. Import Settings in Terrain3D
+### Terrain Bounds (Swiss LV95)
+- **West**: E 2,677,968
+- **East**: E 2,685,968
+- **South**: N 1,278,869
+- **North**: N 1,286,869
+
+### Planned Extension: 16km × 16km
+
+To include Schaffhausen city (Munot, Altstadt), the terrain will be extended:
+
+| Parameter | Current | Extended |
+|-----------|---------|----------|
+| **Center** | E 2,681,968 | E 2,685,000 |
+| **Size** | 8 km × 8 km | 16 km × 16 km |
+| **Resolution** | 8000×8000 | 16000×16000 |
+| **West Edge** | E 2,677,968 | E 2,677,000 |
+| **East Edge** | E 2,685,968 | E 2,693,000 |
+
+This covers:
+- ✅ Schmerlat Airfield (E 2,681,968)
+- ✅ Hallau wine village
+- ✅ Schaffhausen city center (E 2,689,500)
+- ✅ Rhine Falls area
+
+## Terrain Processing Pipeline
+
+### 1. Download SwissTopo Tiles
+
+Use the `scripts/process_swisstopo_terrain.py` script:
+
+```bash
+# Step 1: Generate CSV of required tiles
+python scripts/process_swisstopo_terrain.py \
+    --center-e 2681968 --center-n 1282869 \
+    --size 8000 \
+    --list-tiles --output tiles.csv
+
+# Step 2: Download tiles from SwissTopo
+python scripts/process_swisstopo_terrain.py \
+    --center-e 2681968 --center-n 1282869 \
+    --size 8000 \
+    --download --output downloads/
+
+# Step 3: Process and merge into R16
+python scripts/process_swisstopo_terrain.py \
+    --center-e 2681968 --center-n 1282869 \
+    --size 8000 \
+    --process downloads/ --output gojb/schaffhausen.r16
+```
+
+### 2. Critical Processing Steps
+
+**IMPORTANT**: SwissTopo GeoTIFF tiles have opposite orientation to Godot/Terrain3D:
+
+```python
+# Both flips are REQUIRED for correct orientation
+terrain_data = np.flipud(terrain_data)  # Flip North-South
+terrain_data = np.fliplr(terrain_data)  # Flip East-West
+```
+
+Without these flips:
+- North appears as South
+- East appears as West
+- Landmarks will be in wrong positions
+
+### 3. Import into Terrain3D
 
 1. Open Godot and select the **Terrain3D** node
 2. Go to **Terrain3D → Tools → Import**
-3. Configure the import settings:
+3. Configure settings:
 
 | Setting | Value | Notes |
 |---------|-------|-------|
-| **File** | `zurich_airport_hires.r16` | Your heightmap file |
-| **Height Offset** | `0` | Import with no offset - Godot Y = real ASL |
-| **Height Scale** | `1.0` | Use real-world heights |
-| **Import Position** | `(0, 0)` | Center of terrain |
+| **File** | `schaffhausen.r16` | Your heightmap file |
+| **r16_range** | `Vector2(0, 810)` | Calculated from elevation range |
+| **Height Offset** | `0` | Godot Y = real ASL |
+| **Height Scale** | `1.0` | Real-world meters |
+| **vertex_spacing** | `1.0` | 1 meter per pixel |
 
-4. Click **Import**
+**R16 Range Calculation**:
+```
+r16_range.y = max_elevation - min_elevation + small_buffer
+Example: 806 - 402 + 6 = 410, round up to safe value like 810
+```
 
-### 3. Understanding the Coordinate System
+## Building Import
 
-With **Height Offset = 0**:
-- Godot terrain Y coordinates = real-world ASL elevation in meters
-- JSBSim altitude (meters) = Godot Y position directly
-- No complex offset calculations needed
+### 1. Download Building Tiles
+
+Buildings come from SwissTopo swissBUILDINGS3D 3.0 in GDB (Geodatabase) format:
+
+```bash
+# Convert GDB to GLB format
+python scripts/convert_buildings_to_gltf.py \
+    --input buildings_gdb/ \
+    --output gojb/Assets/buildings_schaffhausen/ \
+    --origin-e 2681968 --origin-n 1282869
+```
+
+The `--origin-e` and `--origin-n` must match the terrain center!
+
+### 2. Building Loader Configuration
+
+In `building_loader.gd`:
+- Set `terrain_area` to the correct region
+- Update `BUILDING_TILES_*` dictionary with tile definitions
+- Each tile has: `id`, `path`, `center` (Godot coordinates)
+
+## Aircraft Model Scale
+
+**IMPORTANT**: The Cessna 172 model is in decimeters, not meters!
+
+| Model | Raw Size | Scaled (0.1x) | Real |
+|-------|----------|---------------|------|
+| Wingspan | 1110 units | 111m → 11.1m | 10.97m |
+| Length | 799 units | 79.9m → 8.0m | 8.28m |
+| Height | 318 units | 31.8m → 3.2m | 2.72m |
+
+Apply scale factor `0.1` in `C172p.tscn`:
+```
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0, 0)
+```
+
+## Coordinate Systems
+
+### Swiss LV95 to Godot World
+
+The terrain is centered at Swiss LV95 coordinates, converted to Godot:
+- **Terrain Center E**: 2681968.0 (Easting at Godot X=0)
+- **Terrain Center N**: 1282869.0 (Northing at Godot Z=0)
+
+Conversion formulas:
+```
+Godot X = TERRAIN_CENTER_E - Swiss_E  (+X = West)
+Godot Z = Swiss_N - TERRAIN_CENTER_N  (+Z = North)
+```
+
+### Godot to WGS84 (Lat/Lon)
+
+The HUD displays real-world coordinates by:
+1. Converting Godot position back to Swiss LV95
+2. Using swisstopo approximate formulas to convert LV95 → WGS84
+
+```gdscript
+func lv95_to_wgs84(easting: float, northing: float) -> Vector2:
+    # Returns Vector2(latitude, longitude) in degrees
+```
 
 ## Collision Detection Architecture
 
@@ -73,64 +203,6 @@ With **Height Offset = 0**:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Key Components
-
-#### GDScript (node_3d.gd)
-
-```gdscript
-# Wheel clearance to prevent visual clipping
-const WHEEL_GROUND_CLEARANCE: float = 0.5  # meters
-
-func _do_deferred_terrain_init() -> void:
-    # Set the wheel clearance offset for visual positioning
-    jsb_node.set_godot_terrain_y_offset(WHEEL_GROUND_CLEARANCE)
-
-func _update_terrain_elevation() -> void:
-    # Get terrain height at aircraft position (already in ASL meters)
-    var terrain_height = terrain_data.get_height(ac_position)
-    
-    # Send directly to JSBSim - no offset needed
-    jsb_node.set_terrain_elevation(terrain_height)
-```
-
-#### C++ (jsbgodot.cpp)
-
-```cpp
-void JSBGodot::set_terrain_elevation(double elevation_m) {
-    double elevation_ft = elevation_m * 3.28084;
-    FDMExec->SetPropertyValue("position/terrain-elevation-asl-ft", elevation_ft);
-}
-
-// In copy_outputs_from_JSBSim()
-// Godot Y = JSBSim altitude (meters) + wheel clearance offset
-local_position.y = altitude_m + godot_terrain_y_offset;
-```
-
-### Coordinate Systems
-
-#### Swiss LV95 to Godot World
-
-The terrain is centered at Swiss LV95 coordinates, converted to Godot:
-- **Terrain Center E**: 2686872.0 (Easting at Godot X=0)
-- **Terrain Center N**: 1257719.0 (Northing at Godot Z=0)
-
-Conversion formulas:
-```
-Godot X = TERRAIN_CENTER_E - Swiss_E  (+X = West)
-Godot Z = Swiss_N - TERRAIN_CENTER_N  (+Z = North)
-```
-
-#### Godot to WGS84 (Lat/Lon)
-
-The HUD displays real-world coordinates by:
-1. Converting Godot position back to Swiss LV95
-2. Using swisstopo approximate formulas to convert LV95 → WGS84
-
-```gdscript
-func lv95_to_wgs84(easting: float, northing: float) -> Vector2:
-    # Returns Vector2(latitude, longitude) in degrees
-```
-
 ## Configuration Variables
 
 ### In node_3d.gd
@@ -138,14 +210,22 @@ func lv95_to_wgs84(easting: float, northing: float) -> Vector2:
 | Variable | Value | Purpose |
 |----------|-------|---------|
 | `WHEEL_GROUND_CLEARANCE` | `0.5` | Meters to lift visual model to prevent wheel clipping |
-| `TERRAIN_CENTER_E` | `2686872.0` | Swiss Easting at Godot X=0 |
-| `TERRAIN_CENTER_N` | `1257719.0` | Swiss Northing at Godot Z=0 |
+| `TERRAIN_CENTER_E` | `2681968.0` | Swiss Easting at Godot X=0 (Schmerlat) |
+| `TERRAIN_CENTER_N` | `1282869.0` | Swiss Northing at Godot Z=0 (Schmerlat) |
 
 ### In JSBGodot C++
 
 | Variable | Purpose |
 |----------|---------|
 | `godot_terrain_y_offset` | Small offset (e.g., 0.5m) to lift visual model above ground |
+
+### Orbit Camera Settings
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `orbit_distance` | `6.0` | Default camera distance (meters) |
+| `ORBIT_DISTANCE_MIN` | `1.5` | Minimum zoom distance |
+| `ORBIT_DISTANCE_MAX` | `50.0` | Maximum zoom distance |
 
 ## HUD Display
 
@@ -169,13 +249,33 @@ The simulator displays:
 - These should be the Swiss LV95 coordinates at Godot position (0, 0)
 
 ### Buildings floating or underground
-- Adjust `building_offset` on the BuildingLoader node
-- Buildings use the same coordinate system as terrain
+- Ensure building origin coordinates match terrain center
+- Check that `--origin-e` and `--origin-n` in convert script match terrain
+
+## Lessons Learned
+
+### SwissTopo Data Orientation
+SwissTopo GeoTIFF files have Y-axis (rows) going from North to South, and X-axis from West to East. Godot/Terrain3D expects the opposite. **Both `np.flipud()` and `np.fliplr()` are required**.
+
+### Model Scale Units
+3D models from various sources may use different units:
+- **Meters**: 1 unit = 1 meter (preferred)
+- **Decimeters**: 1 unit = 0.1 meters (Cessna 172 model uses this)
+- **Centimeters**: 1 unit = 0.01 meters
+
+Always check model dimensions against real-world specs and apply appropriate scale.
+
+### Verification Strategy
+When importing new terrain, use landmarks you know well to verify orientation and scale. The Schaffhausen region was chosen because the user knows the local topography.
 
 ## File Locations
 
 - **Terrain data**: `gojb/Terra3DData/` (Terrain3D .res files)
-- **Heightmap source**: `gojb/zurich_airport_hires.r16`
+- **Heightmap source**: `gojb/schaffhausen.r16`
 - **Main script**: `gojb/node_3d.gd`
 - **Building loader**: `gojb/building_loader.gd`
+- **Building GLBs**: `gojb/Assets/buildings_schaffhausen/`
+- **Cessna model**: `gojb/Assets/cessna172/C172P_1.blend`
 - **JSBSim binding**: `src/jsbgodot.cpp`, `src/jsbgodot.h`
+- **Terrain processing**: `scripts/process_swisstopo_terrain.py`
+- **Building conversion**: `scripts/convert_buildings_to_gltf.py`

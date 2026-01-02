@@ -44,6 +44,9 @@ void JSBGodot::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_terrain_elevation", "elevation_m"), &JSBGodot::set_terrain_elevation);
     ClassDB::bind_method(D_METHOD("initialize_at_terrain", "terrain_elevation_m"), &JSBGodot::initialize_at_terrain);
     ClassDB::bind_method(D_METHOD("is_initialized"), &JSBGodot::is_initialized);
+    ClassDB::bind_method(D_METHOD("set_slew_mode", "enabled"), &JSBGodot::set_slew_mode);
+    ClassDB::bind_method(D_METHOD("get_slew_mode"), &JSBGodot::get_slew_mode);
+    ClassDB::bind_method(D_METHOD("reinitialize_from_godot_position", "godot_pos", "heading_rad"), &JSBGodot::reinitialize_from_godot_position);
     ClassDB::bind_method(D_METHOD("set_godot_terrain_y_offset", "offset_m"), &JSBGodot::set_godot_terrain_y_offset);
     ClassDB::bind_method(D_METHOD("get_godot_terrain_y_offset"), &JSBGodot::get_godot_terrain_y_offset);
     ClassDB::bind_method(D_METHOD("get_latitude_deg"), &JSBGodot::get_latitude_deg);
@@ -322,6 +325,87 @@ void JSBGodot::initialize_at_terrain(double terrain_elevation_m)
 bool JSBGodot::is_initialized() const
 {
     return jsbsim_initialized;
+}
+
+void JSBGodot::set_slew_mode(bool enabled)
+{
+    slew_mode = enabled;
+    printf("JSBGodot: Slew mode %s\n", enabled ? "ENABLED" : "DISABLED");
+}
+
+bool JSBGodot::get_slew_mode() const
+{
+    return slew_mode;
+}
+
+void JSBGodot::reinitialize_from_godot_position(Vector3 godot_pos, double heading_rad)
+{
+    if (!FDMExec)
+    {
+        UtilityFunctions::print("Cannot reinitialize: FDMExec not created");
+        return;
+    }
+    
+    // Godot Y is altitude in meters (since terrain is at real ASL elevations)
+    double altitude_m = godot_pos.y;
+    double altitude_ft = altitude_m * 3.28084;
+    
+    // Query terrain height at current position for terrain elevation
+    // We'll use the current aircraft altitude minus a small buffer as a reasonable terrain estimate
+    // The caller should provide accurate terrain info if available
+    double terrain_ft = (altitude_m - 2.0) * 3.28084;  // Assume 2m AGL as default
+    
+    UtilityFunctions::print("Reinitializing JSBSim from Godot position:");
+    UtilityFunctions::print("  Godot pos: X=", godot_pos.x, " Y=", godot_pos.y, " Z=", godot_pos.z);
+    UtilityFunctions::print("  Altitude: ", altitude_m, "m (", altitude_ft, " ft)");
+    UtilityFunctions::print("  Heading: ", Math::rad_to_deg(heading_rad), " deg");
+    
+    std::shared_ptr<JSBSim::FGInitialCondition> ic = FDMExec->GetIC();
+    
+    // Convert Godot XZ to lat/lon offsets
+    // Godot X = east offset, Godot Z = north offset
+    // We use the same reference point conversion as lat_lon_alt_to_local
+    const double R = 6378137.0; // Earth's radius in meters
+    
+    // Reverse the conversion: lat/lon from local offsets
+    // north = d_lat * R  =>  d_lat = north / R
+    // east = d_lon * R * cos(ref_lat)  =>  d_lon = east / (R * cos(ref_lat))
+    // For simplicity, since we start at lat=0, cos(0) = 1
+    double d_lat_rad = godot_pos.z / R;  // Z is north
+    double d_lon_rad = godot_pos.x / R;  // X is east
+    
+    double new_lat_deg = Math::rad_to_deg(d_lat_rad);
+    double new_lon_deg = Math::rad_to_deg(d_lon_rad);
+    
+    UtilityFunctions::print("  New lat/lon: ", new_lat_deg, ", ", new_lon_deg);
+    
+    // Set terrain elevation
+    ic->SetTerrainElevationFtIC(terrain_ft);
+    
+    // Set aircraft position
+    ic->SetLatitudeDegIC(new_lat_deg);
+    ic->SetLongitudeDegIC(new_lon_deg);
+    ic->SetAltitudeASLFtIC(altitude_ft);
+    
+    // Set orientation - keep level, set heading from aircraft rotation
+    ic->SetThetaDegIC(0.0);  // Pitch = 0
+    ic->SetPhiDegIC(0.0);    // Roll = 0
+    ic->SetPsiDegIC(Math::rad_to_deg(heading_rad));  // Yaw = heading
+    
+    // Set initial velocities (stationary)
+    ic->SetUBodyFpsIC(0.0);
+    ic->SetVBodyFpsIC(0.0);
+    ic->SetWBodyFpsIC(0.0);
+    
+    // Apply initial conditions
+    FDMExec->RunIC();
+    
+    // Ensure engine is running
+    FDMExec->SetPropertyValue("propulsion/engine[0]/set-running", 1);
+    FDMExec->SetPropertyValue("fcs/mixture-cmd-norm", 1.0);
+    FDMExec->SetPropertyValue("propulsion/magneto_cmd", 3);
+    
+    UtilityFunctions::print("JSBSim reinitialized from Godot position successfully!");
 }
 
 void JSBGodot::set_godot_terrain_y_offset(double offset_m)
@@ -797,9 +881,13 @@ void JSBGodot::copy_outputs_from_JSBSim()
         return;
     }
 
-    // Update the position and rotation of the parent node
-    parent_node->set_position(local_position);
-    parent_node->set_rotation(newRot);
+    // In slew mode, don't update position/rotation - let GDScript control it
+    if (!slew_mode)
+    {
+        // Update the position and rotation of the parent node
+        parent_node->set_position(local_position);
+        parent_node->set_rotation(newRot);
+    }
 
     // Access airspeed from the property tree
     double tas_knots = FDMExec->GetPropertyValue("aero/qbar-psf");

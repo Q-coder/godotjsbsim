@@ -38,6 +38,7 @@ namespace godot
 
         double airspeed_knots;
         double vertical_speed_fpm;
+        bool slew_mode = false;  // When true, pause JSBSim physics and position updates
 
         void copy_inputs_to_JSBSim();
         void copy_outputs_from_JSBSim();
@@ -103,6 +104,13 @@ namespace godot
         
         // Check if JSBSim is fully initialized and ready
         bool is_initialized() const;
+        
+        // Slew mode - pauses physics and position updates
+        void set_slew_mode(bool enabled);
+        bool get_slew_mode() const;
+        
+        // Reinitialize JSBSim from current Godot position (used after slew mode)
+        void reinitialize_from_godot_position(Vector3 godot_pos, double heading_rad);
         
         // Get current position data
         double get_latitude_deg() const;

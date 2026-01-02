@@ -3,7 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://bw4qrhwjfgy5v" path="res://Assets/cessna172/C172P_1.blend" id="1_fica4"]
 
 [node name="Node3D" type="Node3D" unique_id=252633614]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.017105103, 0)
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0, 0)
 
 [node name="C172P_1" parent="." unique_id=415740866 instance=ExtResource("1_fica4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.010913372, -0.11403066, 0.30434108)
