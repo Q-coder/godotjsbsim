@@ -44,6 +44,12 @@ This repo intentionally does not depend on Terrain3D or large external scenery d
    ```bash
    # macOS (Apple Silicon)
    scons arch=arm64
+   
+   # macOS (Apple x86)
+   scons arch=x64_64
+
+   # Linux
+   scons 
    ```
 
 4. Run the demo:
@@ -68,3 +74,11 @@ This project combines multiple open-source components:
 - JSBSim: LGPL 2.1
 - Godot Engine: MIT
 - godot-cpp: MIT
+
+
+## Aircraft model
+
+* Title:	   Cessna172
+* Source:	https://sketchfab.com/3d-models/cessna172-d1b15841c29c43d0862667300bad55a4
+* Author:	KOG_THORNS (https://sketchfab.com/ioai25312)
+
