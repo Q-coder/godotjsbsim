@@ -3,94 +3,24 @@
 [ext_resource type="Script" uid="uid://seeaclvwcq0r" path="res://node_3d.gd" id="1_1r08c"]
 [ext_resource type="PackedScene" uid="uid://dxgh4imubsngc" path="res://ac.tscn" id="2_yxcfd"]
 [ext_resource type="PackedScene" uid="uid://c8env1r0nment" path="res://environment.tscn" id="6_envir"]
-[ext_resource type="Texture2D" uid="uid://cditync2r7ipo" path="res://Textures/coast_sand_rocks_02_diff_4k.png" id="6_i5arm"]
-[ext_resource type="Script" path="res://building_loader.gd" id="7_bldng"]
-[ext_resource type="Texture2D" uid="uid://tgqmh32fcwbu" path="res://Textures/coast_sand_rocks_02_rough_4k.png" id="7_wc5p8"]
-
-[sub_resource type="Gradient" id="Gradient_wc5p8"]
-offsets = PackedFloat32Array(0.2, 1)
-colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
-
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_jsk3o"]
-noise_type = 2
-frequency = 0.03
-cellular_jitter = 3.0
-cellular_return_type = 0
-domain_warp_enabled = true
-domain_warp_type = 1
-domain_warp_amplitude = 50.0
-domain_warp_fractal_type = 2
-domain_warp_fractal_lacunarity = 1.5
-domain_warp_fractal_gain = 1.0
-
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_4arys"]
-noise = SubResource("FastNoiseLite_jsk3o")
-color_ramp = SubResource("Gradient_wc5p8")
-seamless = true
-
-[sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_6iypd"]
-_shader_parameters = {
-&"bias_distance": 512.0,
-&"blend_sharpness": 0.5,
-&"depth_blur": 0.0,
-&"dual_scale_far": 170.0,
-&"dual_scale_near": 100.0,
-&"dual_scale_reduction": 0.3,
-&"dual_scale_texture": 0,
-&"enable_macro_variation": true,
-&"enable_projection": true,
-&"flat_terrain_normals": false,
-&"macro_variation1": Color(1, 1, 1, 1),
-&"macro_variation2": Color(1, 1, 1, 1),
-&"macro_variation_slope": 0.333,
-&"mipmap_bias": 1.0,
-&"noise1_angle": 0.0,
-&"noise1_offset": Vector2(0.5, 0.5),
-&"noise1_scale": 0.0400000019,
-&"noise2_scale": 0.076,
-&"noise_texture": SubResource("NoiseTexture2D_4arys"),
-&"projection_threshold": 0.8,
-&"tri_scale_reduction": 0.3
-}
-dual_scaling = true
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tereu"]
-transparency = 4
-cull_mode = 2
-vertex_color_use_as_albedo = true
-albedo_texture = ExtResource("6_i5arm")
-backlight_enabled = true
-backlight = Color(0.5, 0.5, 0.5, 1)
-distance_fade_mode = 1
-distance_fade_min_distance = 128.0
-distance_fade_max_distance = 96.0
-
-[sub_resource type="Terrain3DMeshAsset" id="Terrain3DMeshAsset_cdqbm"]
-generated_type = 1
-height_offset = 0.5
-material_override = SubResource("StandardMaterial3D_tereu")
-last_lod = 0
-last_shadow_lod = 0
-lod0_range = 128.0
-
-[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_wc5p8"]
-name = "coast_sand_rocks_02_diff_4k"
-albedo_texture = ExtResource("6_i5arm")
-normal_texture = ExtResource("7_wc5p8")
-
-[sub_resource type="Terrain3DAssets" id="Terrain3DAssets_tcnuu"]
-mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_cdqbm")])
-texture_list = Array[Terrain3DTextureAsset]([SubResource("Terrain3DTextureAsset_wc5p8")])
+[ext_resource type="PackedScene" uid="uid://donvtr02hvkxe" path="res://ground.tscn" id="8_ground"]
+[ext_resource type="PackedScene" uid="uid://dssmgx0csel6d" path="res://runway.tscn" id="9_runway"]
 
 [node name="Node3D" type="Node3D" unique_id=778369784]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.3009338, 0)
 script = ExtResource("1_1r08c")
 
 [node name="AC" parent="." unique_id=754408209 instance=ExtResource("2_yxcfd")]
-transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, -1257.9392, 618.0513, -1598.5332)
+transform = Transform3D(0.004892146, -0.0018802813, -0.49997252, -0.008030437, 0.49993166, -0.001958704, 0.49991158, 0.008049159, 0.004861279, 76.71896, -5.692359, -0.29314423)
 
 [node name="Environment" parent="." unique_id=1222445889 instance=ExtResource("6_envir")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 415.02835, 0)
+
+[node name="Ground" parent="." unique_id=1000671294 instance=ExtResource("8_ground")]
+transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, 0, -6.96362, -4.326578)
+
+[node name="Runway" parent="." unique_id=1735903714 instance=ExtResource("9_runway")]
+transform = Transform3D(0.016396882, 0, 1.3456707, 0, 1, 0, -2.3196828, 0, 0.009511992, -0.17565918, -6.94289, 139.15599)
 
 [node name="Control" type="Control" parent="." unique_id=1312208183]
 layout_mode = 3
@@ -173,6 +103,7 @@ scale = Vector2(5, 5)
 text = "Lat/Lon: 0.0 / 0.0"
 
 [node name="Label8" type="Label" parent="Control" unique_id=307479243]
+visible = false
 modulate = Color(1, 0.9, 0.6, 1)
 layout_mode = 0
 offset_left = 1713.0
@@ -181,13 +112,3 @@ offset_right = 2051.2
 offset_bottom = 151.4
 scale = Vector2(5, 5)
 text = "heading: "
-
-[node name="Terrain3D" type="Terrain3D" parent="." unique_id=962717072]
-data_directory = "res://Terra3DData"
-material = SubResource("Terrain3DMaterial_6iypd")
-assets = SubResource("Terrain3DAssets_tcnuu")
-top_level = true
-metadata/_edit_lock_ = true
-
-[node name="BuildingLoader" type="Node3D" parent="." unique_id=1549025246]
-script = ExtResource("7_bldng")

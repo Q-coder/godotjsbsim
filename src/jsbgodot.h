@@ -40,6 +40,13 @@ namespace godot
         double vertical_speed_fpm;
         bool slew_mode = false;  // When true, pause JSBSim physics and position updates
 
+        // Cache JSBSim body-frame velocities when entering slew mode so we can
+        // restore speed when exiting slew mode.
+        bool has_slew_velocity_cache = false;
+        double cached_u_fps = 0.0;
+        double cached_v_fps = 0.0;
+        double cached_w_fps = 0.0;
+
         void copy_inputs_to_JSBSim();
         void copy_outputs_from_JSBSim();
 

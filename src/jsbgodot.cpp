@@ -11,6 +11,7 @@
 #include <godot_cpp/classes/scene_tree.hpp>      // Include SceneTree header
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/variant/utility_functions.hpp> // For UtilityFunctions::print
 #include <unistd.h>
 #include <cmath>
@@ -329,6 +330,18 @@ bool JSBGodot::is_initialized() const
 
 void JSBGodot::set_slew_mode(bool enabled)
 {
+    // On transition into slew mode, capture current body velocities so we can
+    // restore speed when returning to simulation mode.
+    if (enabled && !slew_mode) {
+        if (FDMExec && FDMExec->GetPropertyManager()) {
+            cached_u_fps = FDMExec->GetPropertyValue("velocities/u-fps");
+            cached_v_fps = FDMExec->GetPropertyValue("velocities/v-fps");
+            cached_w_fps = FDMExec->GetPropertyValue("velocities/w-fps");
+            has_slew_velocity_cache = true;
+            UtilityFunctions::print("Cached velocity for slew exit (fps): u=", cached_u_fps, " v=", cached_v_fps, " w=", cached_w_fps);
+        }
+    }
+
     slew_mode = enabled;
     printf("JSBGodot: Slew mode %s\n", enabled ? "ENABLED" : "DISABLED");
 }
@@ -348,12 +361,34 @@ void JSBGodot::reinitialize_from_godot_position(Vector3 godot_pos, double headin
     
     // Godot Y is altitude in meters (since terrain is at real ASL elevations)
     double altitude_m = godot_pos.y;
-    double altitude_ft = altitude_m * 3.28084;
     
-    // Query terrain height at current position for terrain elevation
-    // We'll use the current aircraft altitude minus a small buffer as a reasonable terrain estimate
-    // The caller should provide accurate terrain info if available
-    double terrain_ft = (altitude_m - 2.0) * 3.28084;  // Assume 2m AGL as default
+    // Prefer an externally-provided terrain elevation (set via set_terrain_elevation())
+    // rather than guessing terrain from the current altitude. A bad guess here can put
+    // the aircraft intersecting the ground and cause bouncing/jitter after reinit.
+    double terrain_ft = 0.0;
+    bool has_terrain = false;
+    if (FDMExec->GetPropertyManager() && FDMExec->GetPropertyManager()->HasNode("position/terrain-elevation-asl-ft")) {
+        terrain_ft = FDMExec->GetPropertyValue("position/terrain-elevation-asl-ft");
+        has_terrain = true;
+    }
+    if (!has_terrain) {
+        // Fallback: assume roughly 2m AGL
+        terrain_ft = (altitude_m - 2.0) * 3.28084;
+    }
+
+    const double meters_to_feet = 3.28084;
+    const double terrain_m = terrain_ft / meters_to_feet;
+    const double agl_m = altitude_m - terrain_m;
+
+    // If we're near the ground (typical case when returning from slew), snap the aircraft
+    // altitude to a safe on-ground start (terrain + approximate gear/CG height).
+    const double gear_height_ft = 4.0; // Approximate C172 gear height in feet
+    double altitude_ft;
+    if (agl_m < 5.0) {
+        altitude_ft = terrain_ft + gear_height_ft;
+    } else {
+        altitude_ft = altitude_m * meters_to_feet;
+    }
     
     UtilityFunctions::print("Reinitializing JSBSim from Godot position:");
     UtilityFunctions::print("  Godot pos: X=", godot_pos.x, " Y=", godot_pos.y, " Z=", godot_pos.z);
@@ -393,15 +428,27 @@ void JSBGodot::reinitialize_from_godot_position(Vector3 godot_pos, double headin
     ic->SetPsiDegIC(Math::rad_to_deg(heading_rad));  // Yaw = heading
     
     // Set initial velocities (stationary)
-    ic->SetUBodyFpsIC(0.0);
-    ic->SetVBodyFpsIC(0.0);
-    ic->SetWBodyFpsIC(0.0);
+    if (has_slew_velocity_cache) {
+        ic->SetUBodyFpsIC(cached_u_fps);
+        ic->SetVBodyFpsIC(cached_v_fps);
+        ic->SetWBodyFpsIC(cached_w_fps);
+    } else {
+        ic->SetUBodyFpsIC(0.0);
+        ic->SetVBodyFpsIC(0.0);
+        ic->SetWBodyFpsIC(0.0);
+    }
     
     // Apply initial conditions
     FDMExec->RunIC();
+
+    // Consume the cached velocity so it only applies to the first reinit after slew.
+    has_slew_velocity_cache = false;
     
     // Ensure engine is running
     FDMExec->SetPropertyValue("propulsion/engine[0]/set-running", 1);
+    // Release brakes (helps avoid odd ground behavior after reinit)
+    FDMExec->SetPropertyValue("fcs/brake-cmd-norm", 0.0);
+    FDMExec->SetPropertyValue("fcs/parking-brake-cmd-norm", 0.0);
     FDMExec->SetPropertyValue("fcs/mixture-cmd-norm", 1.0);
     FDMExec->SetPropertyValue("propulsion/magneto_cmd", 3);
     
@@ -488,6 +535,20 @@ void JSBGodot::_input(const Ref<InputEvent> event)
                 copy_outputs_from_JSBSim();
                 printf("Throttle increased to %f\n", input_throttle);
             }
+            else if (keycode == KEY_KP_SUBTRACT || keycode == KEY_MINUS)
+            {
+                // Decrease throttle (numpad '-' / '-')
+                set_input_throttle(input_throttle - 0.05f);
+                copy_outputs_from_JSBSim();
+                printf("Throttle decreased to %f\n", input_throttle);
+            }
+            else if (keycode == KEY_KP_ADD || keycode == KEY_PLUS)
+            {
+                // Increase throttle (numpad '+' / '+')
+                set_input_throttle(input_throttle + 0.05f);
+                copy_outputs_from_JSBSim();
+                printf("Throttle increased to %f\n", input_throttle);
+            }
             else if (keycode == KEY_W)
             {
                 // Increase Elevator
@@ -571,6 +632,20 @@ void JSBGodot::_input(const Ref<InputEvent> event)
         {
             set_input_rudder(value);
         }
+        // NOTE: Right stick Y throttle mapping intentionally disabled for now.
+        // We currently use triggers (LT/RT) and/or keyboard for throttle.
+        // Uncomment if you want absolute throttle on right stick Y.
+        // else if (axis == JOY_AXIS_RIGHT_Y)
+        // {
+        //     // Map right stick vertical to throttle (0..1)
+        //     // Typical convention: stick up = -1 (increase), stick down = +1 (decrease)
+        //     float t = (-value + 1.0f) * 0.5f;
+        //     if (t < 0.0f)
+        //         t = 0.0f;
+        //     else if (t > 1.0f)
+        //         t = 1.0f;
+        //     set_input_throttle(t);
+        // }
         // Triggers for throttle control - store values for continuous processing
         else if (axis == JOY_AXIS_TRIGGER_RIGHT) // RT - Increase throttle
         {
@@ -675,6 +750,9 @@ void JSBGodot::_ready()
 {
     UtilityFunctions::print("Initializing JSBGodot...");
 
+    // Make sure _input() is called so keyboard/gamepad controls work.
+    set_process_input(true);
+
     if (!FDMExec)
     {
         FDMExec = new JSBSim::FGFDMExec();
@@ -689,11 +767,21 @@ void JSBGodot::_ready()
         }
     }
 
-    // Set JSBSim root directories with absolute paths for testing
-    FDMExec->SetRootDir(SGPath("/Users/gerhardgubler/code/godotjbsim/jsbsim"));
-    FDMExec->SetAircraftPath(SGPath("/Users/gerhardgubler/code/godotjbsim/jsbsim/aircraft"));
-    FDMExec->SetEnginePath(SGPath("/Users/gerhardgubler/code/godotjbsim/jsbsim/engine"));
-    FDMExec->SetSystemsPath(SGPath("/Users/gerhardgubler/code/godotjbsim/jsbsim/systems"));
+    // Resolve JSBSim data paths relative to the Godot project (res://).
+    // Note: res:// points at the gojb/ folder; JSBSim lives at ../jsbsim in this repo.
+    const String jsbsim_root = ProjectSettings::get_singleton()
+                                  ->globalize_path("res://../jsbsim")
+                                  .simplify_path();
+    const String jsbsim_aircraft = jsbsim_root.path_join("aircraft").simplify_path();
+    const String jsbsim_engine = jsbsim_root.path_join("engine").simplify_path();
+    const String jsbsim_systems = jsbsim_root.path_join("systems").simplify_path();
+
+    UtilityFunctions::print("JSBSim root resolved to: ", jsbsim_root);
+
+    FDMExec->SetRootDir(SGPath(jsbsim_root.utf8().get_data()));
+    FDMExec->SetAircraftPath(SGPath(jsbsim_aircraft.utf8().get_data()));
+    FDMExec->SetEnginePath(SGPath(jsbsim_engine.utf8().get_data()));
+    FDMExec->SetSystemsPath(SGPath(jsbsim_systems.utf8().get_data()));
     UtilityFunctions::print("JSBSim directories set.");
 
     // Load a known good aircraft model

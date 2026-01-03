@@ -2,6 +2,15 @@
 .godot/
 *.import
 
+# Local-only demo assets (keep plugin repo lean)
+gojb/Assets/buildings/
+gojb/Assets/buildings_schaffhausen/
+gojb/Assets/cessna_172sp/
+gojb/Assets/pilatus_pc-7_mk_i/
+gojb/Assets/schmerlat/
+gojb/Assets/pc7.tscn
+gojb/Terra3DData/
+
 # Build artifacts
 *.o
 *.os
@@ -21,6 +30,9 @@
 *.swo
 *~
 
+# Python virtualenvs
+.venv/
+
 # Compiled binaries (keep in bin/ for distribution)
 libgojb.macos.template_debug.arm64.dylib
 libgojb.macos.template_release.arm64.dylib
@@ -36,30 +48,3 @@ __pycache__/
 
 # Godot UID files (auto-generated)
 *.uid
-
-# Terrain data (large files, can be regenerated from R16 source)
-gojb/Terra3DData/
-gojb/terrain_data/
-*.r16
-*.exr
-*.hdr
-*.raw.aux.xml
-
-# Terrain cache (downloaded SwissTopo TIFs - regenerate with scripts)
-terrain_cache/
-
-# Building source data (large GDB files - keep only Schaffhausen)
-# Zurich area tiles (1031-*, 1032-*, 1071-*)
-gojb/buildings_data/swissbuildings3d_3_0_*_1031-*
-gojb/buildings_data/swissbuildings3d_3_0_*_1032-*
-gojb/buildings_data/swissbuildings3d_3_0_*_1071-*
-gojb/buildings_data/swissbuildings3d_3_0_*_1072-*
-gojb/buildings_data/test_tile*
-
-# Zurich Airport buildings (GLB) - exclude for now
-gojb/Assets/buildings/
-
-# Keep only Schaffhausen buildings (1091-*, 1092-*)
-# gojb/buildings_data/swissbuildings3d_3_0_*_1091-*
-# gojb/buildings_data/swissbuildings3d_3_0_*_1092-*
-# gojb/Assets/buildings_schaffhausen/

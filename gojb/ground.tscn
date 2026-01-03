@@ -6,6 +6,9 @@
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_dywc5"]
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(1000, 1, 1000)
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hq7bp"]
 albedo_color = Color(0.838156, 0.852736, 0.868351, 1)
 albedo_texture = ExtResource("1_iv7jt")
@@ -22,3 +25,9 @@ transform = Transform3D(400, 0, 0, 0, 1, 0, 0, 0, 400, 0, -6.96362, 0)
 transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 0.0134685, 0, -0.00602007)
 mesh = SubResource("PlaneMesh_dywc5")
 surface_material_override/0 = SubResource("StandardMaterial3D_hq7bp")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
+shape = SubResource("BoxShape3D_ground")
+

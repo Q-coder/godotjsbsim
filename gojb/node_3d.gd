@@ -1,12 +1,5 @@
 extends Node3D
 
-# Terrain coordinate system constants (Swiss LV95)
-# These define the relationship between Godot world coords and Swiss coordinates
-# Schaffhausen heightmap: 8km x 8km centered on Schmerlat Airfield
-# Bounds: E 2677968-2685968, N 1278869-1286869
-const TERRAIN_CENTER_E: float = 2681968.0  # Swiss Easting at Godot X=0
-const TERRAIN_CENTER_N: float = 1282869.0  # Swiss Northing at Godot Z=0
-
 # Assuming your JSBGodot node is a child of the current node
 var jsb_node: Node
 var active_camera: Camera3D
@@ -75,8 +68,21 @@ var front_wheel_node: Node3D
 var front_wheel_base_transform: Transform3D
 const FRONT_WHEEL_MAX_ANGLE: float = 30.0  # Max steering angle
 
-# Terrain3D reference for ground height queries
-var terrain3d_node: Node
+const GROUND_RAY_HEIGHT: float = 10000.0
+
+func _get_ground_height_at(world_pos: Vector3) -> float:
+	var space_state := get_world_3d().direct_space_state
+	var from := world_pos + Vector3(0.0, GROUND_RAY_HEIGHT, 0.0)
+	var to := world_pos - Vector3(0.0, GROUND_RAY_HEIGHT, 0.0)
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	# Exclude the aircraft so we don't hit ourselves
+	var ac_node = get_node_or_null("AC")
+	if ac_node:
+		query.exclude = [ac_node]
+	var result := space_state.intersect_ray(query)
+	if result and result.has("position"):
+		return (result["position"] as Vector3).y
+	return 0.0
 
 # Slew mode - free movement without physics
 var slew_mode: bool = false
@@ -88,6 +94,9 @@ var _slew_key_held: bool = false  # Prevent key repeat
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	print("Node3D _ready() starting...")
+	# Slew-only HUD: hide heading label unless in slew mode.
+	$Control/Label8.visible = false
+	$Control/Label8.text = ""
 	# Get JSBGodot node after we're in the scene tree
 	jsb_node = $AC/JSBGodot
 	print("JSBGodot node: ", jsb_node)
@@ -190,48 +199,9 @@ func _ready() -> void:
 	else:
 		print("WARNING: Front wheel node not found!")
 	
-	# Get Terrain3D node for ground height queries
-	terrain3d_node = get_node_or_null("Terrain3D")
-	if terrain3d_node:
-		print("Terrain3D node found: ", terrain3d_node)
-		print("Terrain3D class: ", terrain3d_node.get_class())
-		
-		# DEBUG: Print Terrain3D properties
-		print("=== TERRAIN3D PROPERTIES DEBUG ===")
-		print("  collision_layer: ", terrain3d_node.get("collision_layer"))
-		print("  collision_mask: ", terrain3d_node.get("collision_mask"))
-		print("  render_layers: ", terrain3d_node.get("render_layers"))
-		print("  global_position: ", terrain3d_node.global_position)
-		
-		# Check collision object
-		var collision = terrain3d_node.get("collision")
-		if collision:
-			print("=== TERRAIN3D COLLISION DEBUG ===")
-			print("  collision object: ", collision)
-			print("  collision class: ", collision.get_class() if collision.has_method("get_class") else "unknown")
-		else:
-			print("  collision object: null (collision may not be set up)")
-		
-		var tdata = terrain3d_node.get("data")
-		if tdata:
-			print("Terrain3D data: ", tdata)
-			print("Terrain3D data class: ", tdata.get_class())
-			
-			# DEBUG: Print Terrain3DData properties and region info
-			print("=== TERRAIN3D DATA PROPERTIES ===")
-			# Try to get region count
-			if tdata.has_method("get_region_count"):
-				print("  region_count: ", tdata.get_region_count())
-			# Try to list regions
-			if tdata.has_method("get_regions_active"):
-				print("  active_regions: ", tdata.get_regions_active())
-			
-			# Initialize JSBSim with correct terrain elevation
-			_initialize_jsbsim_on_terrain(tdata)
-		else:
-			print("Terrain3D data is null")
-	else:
-		print("WARNING: Terrain3D node not found - ground collision may not work correctly!")
+	# Initialize JSBSim once the scene/physics are ready.
+	# JSBGodot won't advance the simulation until initialize_at_terrain() has been called.
+	call_deferred("_ensure_jsbsim_initialized")
 	
 	# Print the aircraft model hierarchy to find control surfaces
 	print("=== Aircraft Node Hierarchy ===")
@@ -239,6 +209,36 @@ func _ready() -> void:
 	print("=== End Hierarchy ===")
 	
 	print("Node3D _ready() complete!")
+
+
+func _ensure_jsbsim_initialized() -> void:
+	if not jsb_node:
+		return
+	if not jsb_node.has_method("initialize_at_terrain"):
+		return
+
+	# If the extension exposes is_initialized(), only initialize once.
+	if jsb_node.has_method("is_initialized"):
+		if jsb_node.is_initialized():
+			_update_terrain_elevation()
+			return
+
+	var ac_node := get_node_or_null("AC")
+	if not ac_node:
+		return
+	var ground_y := _get_ground_height_at(ac_node.global_position)
+	jsb_node.initialize_at_terrain(ground_y)
+	_update_terrain_elevation()
+
+
+func _find_first_mesh_instance(node: Node) -> MeshInstance3D:
+	for child in node.get_children():
+		if child is MeshInstance3D:
+			return child as MeshInstance3D
+		var nested := _find_first_mesh_instance(child)
+		if nested:
+			return nested
+	return null
 
 
 # Create the propeller blur disc mesh
@@ -251,9 +251,15 @@ func _create_propeller_blur_disc() -> void:
 	blur_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # No lighting
 	propeller_blur_material = blur_mat
 	
-	# Get the propeller mesh's bounding box to determine disc size
+	# Get the propeller mesh's bounding box to determine disc size.
+	# Some imports wrap the mesh in a Node3D, so we search for the first MeshInstance3D.
+	var mesh_inst: MeshInstance3D = null
 	if propeller_node is MeshInstance3D:
-		var mesh_inst = propeller_node as MeshInstance3D
+		mesh_inst = propeller_node as MeshInstance3D
+	else:
+		mesh_inst = _find_first_mesh_instance(propeller_node)
+
+	if mesh_inst:
 		var aabb = mesh_inst.get_aabb()
 		var mesh_center = aabb.position + aabb.size / 2.0
 		
@@ -276,8 +282,8 @@ func _create_propeller_blur_disc() -> void:
 		propeller_blur_disc.material_override = propeller_blur_material
 		propeller_blur_disc.visible = false  # Start hidden
 		
-		# Add as sibling to propeller's parent
-		var prop_parent = propeller_node.get_parent()
+		# Add as sibling to the mesh instance's parent so it inherits the same transforms.
+		var prop_parent = mesh_inst.get_parent()
 		if prop_parent:
 			prop_parent.add_child(propeller_blur_disc)
 			# Position at the center of the propeller mesh geometry
@@ -286,216 +292,24 @@ func _create_propeller_blur_disc() -> void:
 			propeller_blur_disc.rotation_degrees = Vector3(90, 0, 0)
 			print("Blur disc created with diameter: ", prop_diameter)
 	else:
-		print("WARNING: Propeller is not a MeshInstance3D!")
+		print("WARNING: Could not find propeller MeshInstance3D - blur disc not created!")
 
 
 
-# Deferred terrain initialization - waits for first physics frame for raycast to work
-var _pending_terrain_init: bool = false
-var _terrain_data_for_init = null
-
-# Initialize JSBSim with correct terrain elevation at startup
-# This must be called BEFORE JSBSim runs its physics, setting terrain during IC
-func _initialize_jsbsim_on_terrain(terrain_data) -> void:
-	# Store for deferred initialization in first physics frame
-	_pending_terrain_init = true
-	_terrain_data_for_init = terrain_data
-	print("=== Terrain initialization queued for first physics frame ===")
-
-
-# Called from _physics_process on first frame to do actual terrain positioning
-func _do_deferred_terrain_init() -> void:
-	if not _pending_terrain_init or _terrain_data_for_init == null:
-		return
-	_pending_terrain_init = false
-	
-	var terrain_data = _terrain_data_for_init
-	_terrain_data_for_init = null
-	
-	var ac_node = get_node_or_null("AC")
-	if not ac_node or not jsb_node:
-		print("Cannot initialize JSBSim on terrain - missing AC or JSBGodot node")
-		return
-	
-	# Move aircraft to origin first for proper terrain alignment
-	ac_node.global_position.x = 0.0
-	ac_node.global_position.z = 0.0
-	
-	# DEBUG: Check terrain heights at multiple points
-	print("=== TERRAIN HEIGHT DEBUG ===")
-	for test_pos in [Vector3(0, 0, 0), Vector3(100, 0, 100), Vector3(-100, 0, -100), Vector3(500, 0, 500)]:
-		var h = terrain_data.get_height(test_pos)
-		print("  get_height(", test_pos.x, ", ", test_pos.z, ") = ", h, "m = ", h * 3.28084, " ft")
-	
-	# Get terrain height from API
-	var api_height = terrain_data.get_height(Vector3(0, 0, 0))
-	print("=== Terrain3D API get_height(0,0,0) = ", api_height, "m ===")
-	
-	# Try Terrain3D's get_intersection() method (raymarching, no physics needed)
-	var visual_terrain_height: float = api_height
-	var terrain3d = terrain3d_node  # The actual Terrain3D node
-	
-	if terrain3d and terrain3d.has_method("get_intersection"):
-		var ray_origin = Vector3(0, 2000, 0)
-		var ray_dir = Vector3(0, -1, 0)  # Straight down
-		var intersection = terrain3d.get_intersection(ray_origin, ray_dir)
-		if intersection != Vector3.INF and not is_nan(intersection.y):
-			visual_terrain_height = intersection.y
-			print("=== Terrain3D get_intersection hit at Y: ", visual_terrain_height, "m ===")
-		else:
-			print("=== Terrain3D get_intersection returned no hit ===")
-	else:
-		print("=== Terrain3D get_intersection not available ===")
-	
-	# Fallback to physics raycast
-	if visual_terrain_height == api_height:
-		var space_state = get_world_3d().direct_space_state
-		var ray_origin = Vector3(0, 2000, 0)  # Start high above
-		var ray_end = Vector3(0, -500, 0)     # Go below expected terrain
-		var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
-		query.collide_with_areas = false
-		query.collide_with_bodies = true
-		
-		var result = space_state.intersect_ray(query)
-		
-		if result:
-			visual_terrain_height = result.position.y
-			print("=== Physics raycast hit at Y: ", visual_terrain_height, "m ===")
-		else:
-			print("=== Physics raycast FAILED - using API height: ", visual_terrain_height, "m ===")
-	
-	# WORKAROUND: Previously we had issues with terrain visual mesh offset
-	# Now handled by godot_terrain_y_offset in JSBGodot C++ code
-	# The collision/API height is the correct reference point
-	
-	# Position aircraft on the visual terrain (Godot Y coordinate)
-	# Note: JSBSim will take over position control after initialization
-	var gear_height = 1.5
-	var new_y = visual_terrain_height + gear_height
-	
-	print("=== Initial aircraft position at Godot Y: ", new_y, "m (terrain: ", visual_terrain_height, "m) ===")
-	
-	ac_node.global_position.y = new_y
-	
-	# For JSBSim, we need the REAL terrain elevation (for altimeter, physics, etc.)
-	# The offset converts Godot Y to JSBSim ASL elevation
-	# For terrain imported with offset 0: Godot Y already equals real ASL elevation
-	jsbsim_elevation_offset = 0.0  # No offset needed when terrain imported with offset 0
-	var jsbsim_terrain_elevation = api_height + jsbsim_elevation_offset
-	print("=== JSBSim terrain elevation: ", jsbsim_terrain_elevation, "m (", jsbsim_terrain_elevation * 3.28084, " ft) ===")
-	print("=== JSBSim elevation offset: ", jsbsim_elevation_offset, "m (Godot Y + offset = JSBSim ASL) ===")
-	
-	# Small vertical offset to lift aircraft visual model so wheels don't clip into terrain
-	# This is added to altitude_m in C++ to get final Godot Y position
-	const WHEEL_GROUND_CLEARANCE: float = 0.1  # Meters - adjust if wheels clip or float
-	print("=== Setting wheel clearance offset: ", WHEEL_GROUND_CLEARANCE, "m ===")
-	jsb_node.set_godot_terrain_y_offset(WHEEL_GROUND_CLEARANCE)
-	
-	# Initialize JSBSim with the REAL terrain height for ground collision & altimeter
-	jsb_node.initialize_at_terrain(jsbsim_terrain_elevation)
-	
-	terrain_initialized = true
-	print("=== JSBSim terrain initialization complete ===")
-
-
-# Position aircraft on terrain at startup
-func _position_aircraft_on_terrain(terrain_data) -> void:
-	var ac_node = get_node_or_null("AC")
-	if not ac_node:
-		return
-	
-	# Get current aircraft position
-	var ac_position = ac_node.global_position
-	
-	# Query terrain height at aircraft position
-	if not terrain_data.has_method("get_height"):
-		print("Terrain3DData does not have get_height method - cannot position aircraft")
-		return
-	
-	var terrain_height = terrain_data.get_height(ac_position)
-	
-	# Check for NAN (position outside defined regions)
-	if is_nan(terrain_height):
-		print("Aircraft position is outside terrain regions - keeping original position")
-		return
-	
-	# Position aircraft on terrain (add small offset for gear height)
-	var gear_height = 1.5  # Approximate landing gear height in meters
-	var new_y = terrain_height + gear_height
-	
-	print("Positioning aircraft on terrain:")
-	print("  Terrain height: ", terrain_height, "m")
-	print("  Aircraft old Y: ", ac_position.y, "m")
-	print("  Aircraft new Y: ", new_y, "m (terrain + ", gear_height, "m gear)")
-	
-	ac_node.global_position.y = new_y
-	# Note: Don't call set_terrain_elevation here - JSBSim may not be ready
-	# The per-frame _update_terrain_elevation will handle it once simulation starts
-
-
-# Update terrain elevation for JSBSim ground collision (per-frame, after init)
-# This updates the terrain elevation as the aircraft moves over varying terrain
-var terrain_debug_printed: bool = false
-var terrain_initialized: bool = false
-var terrain_init_frame_count: int = 0
-const TERRAIN_INIT_DELAY_FRAMES: int = 60  # Wait 60 frames (~1 sec) before per-frame updates
-# Offset to convert Godot Y coordinates to JSBSim ASL elevation
-# Set during initialization, used for per-frame terrain updates
-var jsbsim_elevation_offset: float = 0.0  # 0 when terrain imported with offset 0
 func _update_terrain_elevation() -> void:
-	# Skip if not yet initialized (initialization happens in _ready via _initialize_jsbsim_on_terrain)
-	if not terrain_initialized:
-		return
-	
-	# Skip first N frames to let JSBSim stabilize
-	terrain_init_frame_count += 1
-	if terrain_init_frame_count < TERRAIN_INIT_DELAY_FRAMES:
-		return
-	
 	if not jsb_node:
 		return
-	if not is_instance_valid(terrain3d_node):
-		return
-	
-	# Get aircraft position in world space
+
 	var ac_node = get_node_or_null("AC")
 	if not ac_node:
 		return
-	
-	var ac_position = ac_node.global_position
-	
-	# Query terrain height at aircraft position
-	# Terrain3D API: terrain3d.data.get_height(global_position)
-	var terrain_data = terrain3d_node.get("data")
-	if not is_instance_valid(terrain_data):
-		return
-	
-	if not terrain_data.has_method("get_height"):
-		if not terrain_debug_printed:
-			print("Terrain3DData does not have get_height method!")
-			terrain_debug_printed = true
-		return
-	
-	var terrain_height_godot = terrain_data.get_height(ac_position)
-	
-	# Check for NAN (position outside defined regions)
-	if is_nan(terrain_height_godot):
-		terrain_height_godot = 0.0  # Default to sea level if outside terrain
-	
-	# Convert Godot Y coordinate to JSBSim ASL elevation
-	# JSBSim expects real-world ASL, so we add the offset
-	var terrain_elevation_jsbsim = terrain_height_godot + jsbsim_elevation_offset
-	
-	# Set terrain elevation in JSBSim (in meters - the method converts to feet)
-	jsb_node.set_terrain_elevation(terrain_elevation_jsbsim)
+
+	var ground_y := _get_ground_height_at(ac_node.global_position)
+	jsb_node.set_terrain_elevation(ground_y)
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
-	# Do deferred terrain initialization if pending (needs physics world ready)
-	if _pending_terrain_init:
-		_do_deferred_terrain_init()
-	
 	# Toggle slew mode with Shift+Y
 	if Input.is_key_pressed(KEY_SHIFT) and Input.is_key_pressed(KEY_Y):
 		if not _slew_key_held:
@@ -507,6 +321,8 @@ func _process(delta: float) -> void:
 	# Handle slew mode movement
 	if slew_mode:
 		handle_slew_mode(delta)
+		# Keep JSBSim terrain elevation in sync while slewing so reinit can use it.
+		_update_terrain_elevation()
 		# Allow camera controls in slew mode, but skip other processing
 		if Input.is_action_just_pressed("flip_camera"):
 			flip_camera()
@@ -547,13 +363,9 @@ func _process(delta: float) -> void:
 		
 		# Coordinate display
 		var godot_pos = jsb_node.get_godot_position()
-		# Convert Godot position to Swiss LV95 coordinates
-		# Godot X = TERRAIN_CENTER_E - Swiss_E  =>  Swiss_E = TERRAIN_CENTER_E - Godot_X
-		# Godot Z = Swiss_N - TERRAIN_CENTER_N  =>  Swiss_N = TERRAIN_CENTER_N + Godot_Z
-		var swiss_e = TERRAIN_CENTER_E - godot_pos.x
-		var swiss_n = TERRAIN_CENTER_N + godot_pos.z
 		$Control/Label6.text = "Godot: X=%.1f Y=%.1f Z=%.1f" % [godot_pos.x, godot_pos.y, godot_pos.z]
-		$Control/Label7.text = "Swiss E: %s, N: %s" % [format_swiss_coord(swiss_e), format_swiss_coord(swiss_n)]
+		var ground_y = _get_ground_height_at(godot_pos)
+		$Control/Label7.text = "Ground Y: %.1f (AGL: %.1f)" % [ground_y, godot_pos.y - ground_y]
 	else:
 		$Label.text = "JSBGodot node not found."
 
@@ -561,6 +373,7 @@ func _process(delta: float) -> void:
 ## Toggle slew mode on/off
 func toggle_slew_mode() -> void:
 	slew_mode = not slew_mode
+	$Control/Label8.visible = slew_mode
 	
 	# Tell JSBGodot to pause position updates in slew mode
 	if jsb_node and jsb_node.has_method("set_slew_mode"):
@@ -578,6 +391,8 @@ func toggle_slew_mode() -> void:
 		print("=== SLEW MODE DISABLED ===")
 		# Clear slew-only HUD elements
 		$Control/Label8.text = ""
+		# Ensure terrain elevation is up-to-date at the new position before reinit.
+		_update_terrain_elevation()
 		# Re-initialize JSBSim at new position
 		var ac_node = $AC
 		if ac_node and jsb_node:
@@ -658,26 +473,16 @@ func handle_slew_mode(delta: float) -> void:
 	
 	# Update HUD with current position
 	var godot_pos = ac_node.global_position
-	var swiss_e = TERRAIN_CENTER_E - godot_pos.x
-	var swiss_n = TERRAIN_CENTER_N + godot_pos.z
-	
-	# Query terrain height at current position
-	var terrain_height = 0.0
-	if terrain3d_node:
-		var terrain_data = terrain3d_node.get("data")
-		if terrain_data and terrain_data.has_method("get_height"):
-			terrain_height = terrain_data.get_height(godot_pos)
-			if is_nan(terrain_height):
-				terrain_height = 0.0
+	var terrain_height = _get_ground_height_at(godot_pos)
 	
 	var heading_deg = fmod(rad_to_deg(-ac_node.rotation.y) + 360.0, 360.0)
 	$Control/Label.text = "=== SLEW MODE ==="
 	$Control/Label2.text = "Height AGL: %.1f m" % (godot_pos.y - terrain_height)
-	$Control/Label3.text = "Terrain: %.1f m ASL" % terrain_height
-	$Control/Label4.text = "Aircraft: %.1f m ASL" % godot_pos.y
+	$Control/Label3.text = "Ground Y: %.1f" % terrain_height
+	$Control/Label4.text = "Aircraft Y: %.1f" % godot_pos.y
 	$Control/Label5.text = "Shift+Y to exit"
 	$Control/Label6.text = "Godot: X=%.1f Y=%.1f Z=%.1f" % [godot_pos.x, godot_pos.y, godot_pos.z]
-	$Control/Label7.text = "Swiss E: %s, N: %s" % [format_swiss_coord(swiss_e), format_swiss_coord(swiss_n)]
+	$Control/Label7.text = "AGL: %.1f" % (godot_pos.y - terrain_height)
 	$Control/Label8.text = "Heading: %.0f°" % heading_deg
 
 
@@ -973,49 +778,3 @@ func animate_control_surfaces() -> void:
 		var flap_angle = -flap_input * FLAP_MAX_ANGLE  # Inverted
 		right_flap_node.transform = right_flap_base_transform
 		right_flap_node.rotation_degrees.x = right_flap_base_transform.basis.get_euler().x * (180.0/PI) + flap_angle
-
-
-# Convert Swiss LV95 coordinates to WGS84 latitude/longitude
-# Based on the approximate formulas from swisstopo
-# Returns Vector2(latitude, longitude) in degrees
-func lv95_to_wgs84(easting: float, northing: float) -> Vector2:
-	# Convert to auxiliary values (shift origin and scale)
-	var y_aux = (easting - 2600000.0) / 1000000.0
-	var x_aux = (northing - 1200000.0) / 1000000.0
-	
-	# Calculate latitude in 10000" units
-	var lat_aux = 16.9023892 \
-		+ 3.238272 * x_aux \
-		- 0.270978 * y_aux * y_aux \
-		- 0.002528 * x_aux * x_aux \
-		- 0.0447 * y_aux * y_aux * x_aux \
-		- 0.0140 * x_aux * x_aux * x_aux
-	
-	# Calculate longitude in 10000" units
-	var lon_aux = 2.6779094 \
-		+ 4.728982 * y_aux \
-		+ 0.791484 * y_aux * x_aux \
-		+ 0.1306 * y_aux * x_aux * x_aux \
-		- 0.0436 * y_aux * y_aux * y_aux
-	
-	# Convert to degrees
-	var latitude = lat_aux * 100.0 / 36.0
-	var longitude = lon_aux * 100.0 / 36.0
-	
-	return Vector2(latitude, longitude)
-
-
-# Format Swiss coordinate with apostrophe thousand separators
-# e.g., 2681931 -> "2'681'931"
-func format_swiss_coord(value: float) -> String:
-	var int_val = int(round(value))
-	var str_val = str(int_val)
-	var result = ""
-	var count = 0
-	# Process from right to left
-	for i in range(str_val.length() - 1, -1, -1):
-		if count > 0 and count % 3 == 0:
-			result = "'" + result
-		result = str_val[i] + result
-		count += 1
-	return result
