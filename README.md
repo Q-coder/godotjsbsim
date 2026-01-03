@@ -159,7 +159,10 @@ This project combines multiple open-source components:
 - [JSBSim Team](https://github.com/JSBSim-Team/jsbsim) for the flight dynamics engine
 - [chunky/jsbgodot](https://github.com/chunky/jsbgodot) for the original Godot 3 integration
 - Sketchfab artists for aircraft models
+- Swisstopo for scenery data for the demo scenery
+   https://www.swisstopo.admin.ch/de/hoehenmodell-swissalti3d
+
 Model Information:
-* title:	Cessna172
-* source:	https://sketchfab.com/3d-models/cessna172-d1b15841c29c43d0862667300bad55a4
-* author:	KOG_THORNS (https://sketchfab.com/ioai25312)
+* Title:	Cessna172
+* Source:	https://sketchfab.com/3d-models/cessna172-d1b15841c29c43d0862667300bad55a4
+* Author:	KOG_THORNS (https://sketchfab.com/ioai25312)

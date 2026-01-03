@@ -87,7 +87,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.3009338, 0)
 script = ExtResource("1_1r08c")
 
 [node name="AC" parent="." unique_id=754408209 instance=ExtResource("2_yxcfd")]
-transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, -1262.1655, 10.215652, -1598.5332)
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, -1257.9392, 618.0513, -1598.5332)
 
 [node name="Environment" parent="." unique_id=1222445889 instance=ExtResource("6_envir")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 415.02835, 0)
