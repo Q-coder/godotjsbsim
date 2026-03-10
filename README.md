@@ -27,7 +27,7 @@ This repo intentionally does not depend on Terrain3D or large external scenery d
 
 1. Clone with submodules:
    ```bash
-   git clone --recursive git@gitlab.md80.ch:gery/godotjsbsim.git
+   git clone --recursive https://github.com/Q-coder/godotjsbsim.git
    cd godotjsbsim
    ```
 
